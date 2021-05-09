@@ -177,9 +177,10 @@ For this I'm using the packages `usmap`, tutorial from https://cran.r-project.or
 ```{r}
 library(ggplot2)
 library(usmap)
+library(RColorBrewer)
 ```
 
-```{r}
+```{r, eval=FALSE}
 #Reminding myself how to use usmap, mostly taken from tutorial
 plot_usmap(regions = "states") + 
   labs(title = "US States",
@@ -187,7 +188,7 @@ plot_usmap(regions = "states") +
   theme(panel.background = element_rect(color = "black"))
 ```
 
-```{r}
+```{r, eval=FALSE}
 #Also just reminding myself how to use usmap package -- mostly taken from tutorial
 plot_usmap(data = statepop, values = "pop_2015", color = "red") + 
   scale_fill_continuous(name = "Population (2015)", label = scales::comma) + 
@@ -203,22 +204,76 @@ data_states <- data
 data_states$fips <- fips(data_states$State)
 ```
 
+-1575318.95
+-872719.7
 ```{r}
 #Getting the data I want for this
 data_states_13_meds <- data_states %>% 
   filter(Indicator == "Took Prescription Medication for Mental Health, Last 4 Weeks",
          Group == "By State",
          `Time Period` == 13) %>% 
-  select(fips, Value) 
+  select(fips, Value, State, Indicator) 
+```
+```{r}
+#GETTING ALL OF THE CUSTOM VALUES
 
-#Now adding the map
-plot_usmap(data=data_states_13_meds, values = "Value", color = "white") +  
-  scale_fill_continuous(name = "Pct of adults who took meds") + 
-  theme(legend.position = "right")
+#Title and the total value for the united states
+full_title <- data_states_13_meds$Indicator %>% head(1)
+title <- str_sub(full_title, 1, -15)
+
+national_value <- data_states %>% 
+  filter(Indicator == "Took Prescription Medication for Mental Health, Last 4 Weeks",
+         Group == "National Estimate",
+         `Time Period` == 13) %>% 
+  select(Value) %>% 
+  head(1) %>% 
+  as.numeric()
+
+
+#Finding the correct color for the total national value
+data_states_13_meds$color_lev <- as.numeric(cut(data_states_13_meds$Value, 9, ordered=TRUE))
+
+num <- as.numeric(data_states_13_meds %>% 
+  filter(Value == which.min(abs(data_states_13_meds$color_lev-national_value))) %>% select(color_lev))
+national_color <- brewer.pal(9, "Blues")[num+1]
 ```
 
 ```{r}
-glimpse(statepop)
+#Now adding the map
+plot_usmap(data=data_states_13_meds, values = "Value", color = "white", labels = FALSE, label_color = "white") +  
+  scale_fill_distiller(name = "Percent", palette = "Blues", direction = 1) + 
+  theme(legend.position = c(.9, .3)) +
+  labs(title = title) +
+  annotate("text", x = 3000000, y = -1900000, label = "US Total") +
+  annotate("point", x = 2825000, y = -2100000, size = 5, color = national_color) +
+  annotate("text", x = 3100000, y = -2100000, label = paste(national_value, "%", sep=""))
+```
+
+ - Help with plot legend: https://www.statology.org/ggplot-legend-position/
+ - Help getting the coordinates and using annotate on the map (I realized the coordinate system is different, so I had to compare the different coordinates to figure out where I could approximately place the legend): https://cran.r-project.org/web/packages/usmap/vignettes/advanced-mapping.html
+ - Help with brewer color plot (to find the specific blues in the brewer "Blues" color palette): http://jenrichmond.rbind.io/post/idhtg-how-to-use-colour-palettes-with-ggplot/
+  - https://stackoverflow.com/questions/26287864/picking-individual-colours-from-a-rcolorbrewer-palette-as-a-scale-colour-manual
+  - http://adomingues.github.io/2015/09/24/finding-closest-element-to-a-number-in-a-list/
+  - for bins: https://stackoverflow.com/questions/12979456/categorize-numeric-variable-into-group-bins-breaks and https://www.geeksforgeeks.org/divide-a-vector-into-ranges-in-r-programming-cut-function/ and https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/cut
+ - Help with annotation: https://ggplot2.tidyverse.org/reference/annotate.html
+
+
+Just a map mostly copied from the example, for help finding the correct coordinates:
+```{r}
+#earthquakes
+eq_transformed <- usmap_transform(earthquakes)
+
+eq_transformed <- eq_transformed %>% 
+  mutate(lonlat = paste(lon.1, ", ", lat.1))
+
+plot_usmap() +
+  geom_point(data = eq_transformed, aes(x = lon.1, y = lat.1, size = mag),
+             color = "red", alpha = 0.25) +
+  labs(title = "US Earthquakes",
+       subtitle = "Source: USGS, Jan 1 to Jun 30 2019",
+       size = "Magnitude") +
+  geom_label(data = eq_transformed, aes(x = lon.1, y = lat.1, label = lonlat)) +
+  theme(legend.position = "right")
 ```
 
 
