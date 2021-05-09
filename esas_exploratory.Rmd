@@ -238,9 +238,15 @@ num <- as.numeric(data_states_13_meds %>%
 national_color <- brewer.pal(9, "Blues")[num+1]
 ```
 
+To do:
+
+ - outline borders in black (hawaii)
+ - labels
+ - label ne states with lines??
+ 
 ```{r}
 #Now adding the map
-plot_usmap(data=data_states_13_meds, values = "Value", color = "white", labels = FALSE, label_color = "white") +  
+plot_usmap(data=data_states_13_meds, values = "Value", color = "white", labels = TRUE, label_color = "white") +  
   scale_fill_distiller(name = "Percent", palette = "Blues", direction = 1) + 
   theme(legend.position = c(.9, .3)) +
   labs(title = title) +
