@@ -1,0 +1,222 @@
+---
+title: "Esa's Exploratory Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+# Loading & Setting Up Data
+
+```{r}
+data <- read_csv("Mental_Health_Care_in_the_Last_4_Weeks.csv")
+```
+
+```{r}
+glimpse(data)
+```
+
+# Beginning exploratory data analysis
+
+The first excursion into this data, yay!
+
+## What does the data look like??
+
+To be honest, the formatting of this data somewhat confuses me and I feel as though I don't understand exactly what all of the variables and conditions are -- this will help fix that!
+
+**Columns**
+
+ - Indicator
+ - Group
+ - State
+ - Subgroup
+ - Phase
+ - Time Period
+ - Time Period Label
+ - Time Period Start Date
+ - Time Period End Date
+ - Value
+ - LowCI
+ - HighCI
+ - Confidence Interval
+ - Quartile Range 
+ - Suppression Flag *(mostly NA values)*
+
+
+### What are the possible values for each column?
+
+```{r, eval = FALSE}
+#Used to find all of the following values (not actually relevant to any data analysis)
+data %>% 
+  #filter(`Time Period` == 13, Group == "By State") %>% 
+  select("Time Period Start Date") %>% 
+  distinct()
+```
+
+**Indicators**
+
+The four indicators are:
+
+ - Took Prescription Medication for Mental Health, Last 4 Weeks
+ - Received Counseling or Therapy, Last 4 Weeks
+ - Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks
+ - Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks
+
+
+**Groups**
+
+The seven groups are:
+
+ - National Estimate	
+ - By Age	
+ - By Sex	
+ - By Presence of Symptoms of Anxiety/Depression	
+ - By Race/Hispanic ethnicity	
+ - By Education	
+ - By State
+
+
+**States**
+
+The fifty-two 'states' are the entire US population ("United States"), Washington DC ("District of Columbia"), and the fifty US states.
+
+
+**Subgroups**
+
+The subgroups for each group are:
+
+National Estimate	
+
+- United States	
+
+By Age	
+
+ - 18 - 29 years				
+ - 30 - 39 years				
+ - 40 - 49 years				
+ - 50 - 59 years				
+ - 60 - 69 years				
+ - 70 - 79 years				
+ - 80 years and above	
+
+By Sex	
+
+ - Male				
+ - Female				
+
+By Presence of Symptoms of Anxiety/Depression	
+
+ - Did not experience symptoms of anxiety/depression in the past 4 weeks	
+  - Experienced symptoms of anxiety/depression in past 4 weeks			
+
+By Race/Hispanic ethnicity	
+
+ - Hispanic or Latino				
+ - Non-Hispanic white, single race				
+ - Non-Hispanic black, single race				
+ - Non-Hispanic Asian, single race				
+ - Non-Hispanic, other races and multiple races	
+
+By Education	
+
+ - Less than a high school diploma				
+ - High school diploma or GED				
+ - Some college/Associate's degree				
+ - Bachelor's degree or higher
+
+By State
+
+ - District of Columbia
+ - the 50 US states
+
+
+**Phases**
+
+The three (??) phases are:
+
+ - 2				
+ - *NA*			
+ - -1
+ 
+ 
+ **Time Periods**
+ 
+ The sixteen time periods are:
+
+| Period | Period Label     | Period Start Time               |
+|-------:|:----------------:|:--------------------------------|
+|     13 | 	Aug 19 - Aug 31 | 8/19/20 0:00                    |
+|     14 | 	Sep 2 - Sep 14  | 9/2/20 0:00	                    |
+|     15 | 	Sep 16 - Sep 28 | 9/16/20 0:00	                  |
+|     16 | 	Sep 30 - Oct 12 | 9/30/20 0:00                    |
+|     17 | 	Oct 14 - Oct 26 | 10/14/20 0:00			              |
+|     18 | 	Oct 28 - Nov 9  | 10/28/20 0:00			              |
+|     19 | 	Nov 11 - Nov 23 | 11/11/20 0:00			              |
+|     20 | 	Nov 25 - Dec 7  | 11/25/20 0:00			              |
+|     21 | 	Dec 9 - Dec 21  | 12/9/20 0:00 OR 12:00:00 AM     |
+|     1  |  Dec 22 - Jan 5  | 12/22/20 0:00 OR 12:00:00 AM    |
+|     22 |  Jan 6 - Jan 18  | 1/6/21 0:00 OR 12:00:00 AM      |
+|     23 |	Jan 20 - Feb 1  | 01/20/2021 12:00:00 AM          |
+|     24 |	Feb 3 - Feb 15  | 02/03/2021 12:00:00 AM          |
+|     25 |	Feb 17 - Mar 1  | 02/17/2021 12:00:00 AM          |
+|     26 |	Mar 3 - Mar 15  | 03/03/2021 12:00:00 AM          |
+|     27 |	Mar 17 - Mar 29 | 03/17/2021 12:00:00 AM          |
+
+
+## Exploring with the first time period, 13 (Aug 19 - Aug 31)
+
+### Map of the US
+
+For this I'm using the packages `usmap`, tutorial from https://cran.r-project.org/web/packages/usmap/vignettes/mapping.html
+
+```{r}
+library(ggplot2)
+library(usmap)
+```
+
+```{r}
+#Reminding myself how to use usmap, mostly taken from tutorial
+plot_usmap(regions = "states") + 
+  labs(title = "US States",
+       subtitle = "This is a blank map of the states of the US (mostly taken from tutorial)") + 
+  theme(panel.background = element_rect(color = "black"))
+```
+
+```{r}
+#Also just reminding myself how to use usmap package -- mostly taken from tutorial
+plot_usmap(data = statepop, values = "pop_2015", color = "red") + 
+  scale_fill_continuous(name = "Population (2015)", label = scales::comma) + 
+  theme(legend.position = "right")
+```
+
+Let's say we want to look at the indicator "Took Prescription Medication for Mental Health, Last 4 Weeks" for each US state (and DC) in the first time period, 13
+
+```{r}
+data_states <- data
+data_states$fips <- fips(data_states$State)
+```
+
+```{r}
+#Getting the data I want for this
+data_states_13_meds <- data_states %>% 
+  filter(Indicator == "Took Prescription Medication for Mental Health, Last 4 Weeks",
+         Group == "By State",
+         `Time Period` == 13) %>% 
+  select(fips, Value) 
+
+#Now adding the map
+plot_usmap(data=data_states_13_meds, values = "Value", color = "white") +  
+  scale_fill_continuous(name = "Pct of adults who took meds") + 
+  theme(legend.position = "right")
+```
+
+```{r}
+glimpse(statepop)
+```
+
+
