@@ -197,6 +197,8 @@ plot_usmap(data = statepop, values = "pop_2015", color = "red") +
 Let's say we want to look at the indicator "Took Prescription Medication for Mental Health, Last 4 Weeks" for each US state (and DC) in the first time period, 13
 
 ```{r}
+#Help getting the fips code from https://www.littlemissdata.com/blog/usmap
+#Turns out the usmap package won't work without a "state" or "fips" column... and I thought there was a state column but it wasn't working, so fips did the trick!
 data_states <- data
 data_states$fips <- fips(data_states$State)
 ```
