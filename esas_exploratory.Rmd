@@ -424,7 +424,91 @@ Fine, be obstinate and not work, see if I care!!
 
 What's holding it up?
 ```{r}
-as.Date("12/21/2020", format = "%m %d %Y")
-as.Date("9/28/20", format = "%m %d %Y")
+library(lubridate)
+```
+
+```{r}
+mdy(12/21/2020)
+mdy(str_remove("12/21/2020", "/"))
+mdy(12212020)
+```
+
+Now, going back to the code we had for the df `test`, let's see if we can make these dates!!
+
+need to use str_remove_all for this: https://stackoverflow.com/questions/27044727/removing-characters-from-string-in-r
+```{r}
+test_2 <- data %>% 
+  group_by(`Time Period Start Date`) %>% 
+  mutate(Start_Date = (ifelse(nchar(`Time Period Start Date`)==22, #if it's in the MM/DD/YYYY 12:00:00 AM format, then it takes the first ten characters
+                                 (str_remove_all(str_sub(`Time Period Start Date`, 1, 10), "/")),
+                                 ifelse(nchar(`Time Period Start Date`)==11, #now time for all of the wonderful ways the 0:00 dates can be -- up first, if it's got six characters for the date, e.g. M/D/YY, then take those first six characters
+                                        (str_remove_all(str_sub(`Time Period Start Date`, 1, 6), "/")), 
+                                        ifelse(nchar(`Time Period Start Date`)==12, #if it's got seven characters for the date, e.g. MM/D/YY or M/DD/YY, take seven
+                                               (str_remove_all(str_sub(`Time Period Start Date`, 1, 7), "/")), #finally, if it's anything else then it has eight characters for the date, e.g. MM/DD/YY
+                                               (str_remove_all(str_sub(`Time Period Start Date`, 1, 8), "/"))
+                                               )
+                                        )
+                                 )
+                          ),
+         start_date_new = mdy(Start_Date)
+         )
+```
+
+Okay, that doesn't work when we add mdy() because of the variations in length -- if we try `mdy(str_remove_all("12/7/20", "/"))`, it doesn't work because it doesn't have enough characters to recognize. Is 12720 the date for 1/27/20 or 12/7/20? I need to find a way to... hmm might it recognize - instead of /?
+```{r}
+mdy("12-7-20")
+```
+Yes! HAHA it works!! So instead of str_remove_all, we need str_replace_all!
+
+```{r}
+test2 <- data %>% 
+  group_by(`Time Period Start Date`) %>% 
+  mutate(Start_Date = (ifelse(nchar(`Time Period Start Date`)==22, #if it's in the MM/DD/YYYY 12:00:00 AM format, then it takes the first ten characters
+                                 (str_replace_all(str_sub(`Time Period Start Date`, 1, 10), "/", "-")),
+                                 ifelse(nchar(`Time Period Start Date`)==11, #now time for all of the wonderful ways the 0:00 dates can be -- up first, if it's got six characters for the date, e.g. M/D/YY, then take those first six characters
+                                        (str_replace_all(str_sub(`Time Period Start Date`, 1, 6), "/", "-")), 
+                                        ifelse(nchar(`Time Period Start Date`)==12, #if it's got seven characters for the date, e.g. MM/D/YY or M/DD/YY, take seven
+                                               (str_replace_all(str_sub(`Time Period Start Date`, 1, 7), "/", "-")), #finally, if it's anything else then it has eight characters for the date, e.g. MM/DD/YY
+                                               (str_replace_all(str_sub(`Time Period Start Date`, 1, 8), "/", "-"))
+                                               )
+                                        )
+                                 )
+                          ),
+         start_date_new = mdy(Start_Date)
+         )
+```
+
+
+IT WORKED IT WORKED IT WORKED!!
+
+Now we just need to get end dates on it!!
+
+Okay, I'm done typing out this long ifelse statement, time to write a *function*!
+
+```{r}
+tidy_dates <- function(column){
+
+mdy(ifelse(nchar(column)==22, #if it's in the MM/DD/YYYY 12:00:00 AM format, then it takes the first ten characters
+                                 (str_replace_all(str_sub(column, 1, 10), "/", "-")),
+                                 ifelse(nchar(column)==11, #now time for all of the wonderful ways the 0:00 dates can be -- up first, if it's got six characters for the date, e.g. M/D/YY, then take those first six characters
+                                        (str_replace_all(str_sub(column, 1, 6), "/", "-")), 
+                                        ifelse(nchar(column)==12, #if it's got seven characters for the date, e.g. MM/D/YY or M/DD/YY, take seven
+                                               (str_replace_all(str_sub(column, 1, 7), "/", "-")), #finally, if it's anything else then it has eight characters for the date, e.g. MM/DD/YY
+                                               (str_replace_all(str_sub(column, 1, 8), "/", "-"))
+                                               )
+                                        )
+                                 ))
+}
+```
+
+```{r}
+data_correct_dates <- data %>% 
+  group_by(`Time Period Start Date`) %>% 
+  mutate(Start_Date = tidy_dates(`Time Period Start Date`),
+         End_Date = tidy_dates(`Time Period End Date`))
+```
+
+```{r}
+write_csv(data_correct_dates, "data_correct_dates.csv")
 ```
 
