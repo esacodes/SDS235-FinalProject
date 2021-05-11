@@ -328,6 +328,7 @@ us_covid <- us_covid %>%
 Now I need to wrangle this into specific time frames!
 These time frames will be based on the specific intervals listed in the main data under `Time Period Start Date`, and `Time Period End Date`.
 
+
 ```{r}
 data %>% 
   select(`Time Period Start Date`, `Time Period End Date`) %>% 
@@ -335,7 +336,95 @@ data %>%
 ```
 ```{r}
 data %>% 
-  filter(Group == "National Estimate")
+  filter(Group == "National Estimate") %>% 
+  select(Indicator, `Time Period Start Date`, `Time Period End Date`, `Time Period Label`, Value)
 ```
 
 Next, I need to find a way to group the us_covid data by the time periods in the mental health data.
+
+get rid of the data before and after this time span
+isolate the months and days
+assign something based on if a value is true
+
+But first, I realized that the main data abruptly switches date format
+
+```{r}
+end_date <- data %>% select(`Time Period End Date`)
+lapply(end_date, class)
+```
+
+
+If else from https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/ifelse
+```{r}
+test <- data %>% 
+  group_by(`Time Period Start Date`) %>% 
+  mutate(Start_Date_1 = (ifelse(nchar(`Time Period Start Date`)==22, #if it's in the MM/DD/YYYY 12:00:00 AM format, then it takes the first ten characters
+                                 str_sub(`Time Period Start Date`, 1, 10),
+                                 ifelse(nchar(`Time Period Start Date`)==11, #now time for all of the wonderful ways the 0:00 dates can be -- up first, if it's got six characters for the date, e.g. M/D/YY, then take those first six characters
+                                        str_sub(`Time Period Start Date`, 1, 6), 
+                                        ifelse(nchar(`Time Period Start Date`)==12, #if it's got seven characters for the date, e.g. MM/D/YY or M/DD/YY, take seven
+                                               str_sub(`Time Period Start Date`, 1, 7), #finally, if it's anything else then it has eight characters for the date, e.g. MM/DD/YY
+                                               str_sub(`Time Period Start Date`, 1, 8))
+                                        )
+                                 )
+                          )
+         )
+```
+
+
+```{r}
+data %>% mutate(try_to_substr = str_sub(`Time Period Start Date`, 1, 10))
+```
+
+**Did it work?**
+```{r}
+test %>% 
+  distinct(Start_Date_1)
+```
+Looks like it worked!!!
+
+PROBLEM FIGURED OUT: I was using length() instead of nchar() -- the former is the length of a vector, the latter is the number of characters in a string. It was returning "1" for all of the lengths, duh!!
+nchar from https://stackoverflow.com/questions/11134812/how-to-find-the-length-of-a-string-in-r
+
+**Figuring out how to use str_sub**
+```{r}
+am <- "12/21/2020 12:00:00 AM"
+class(am)
+paste("12/21/2020 12:00:00 AM has", nchar(am), "letters")
+str_sub(am, 1, 10)
+
+oo <- "9/28/20 0:00"
+paste("9/28/20 0:00 has", nchar(oo), "letters")
+str_sub(oo, 1, 7)
+
+ooo <- "12/7/20 0:00"
+paste("12/7/20 0:00 has ", nchar(ooo), "letters")
+str_sub(ooo, 1, 7)
+
+oooo <- "12/22/20 0:00"
+paste("12/22/20 0:00 has ", nchar(oooo), "letters")
+
+ifelse(nchar(oo)==12, str_sub(oo, 1, 7), str_sub(oo, 1, 8))
+
+oo <- "12/7/20 0:00"
+ifelse(nchar(oo)==12, str_sub(oo, 1, 7), str_sub(oo, 1, 8))
+
+oo <- "12/22/20 0:00"
+ifelse(nchar(oo)==12, str_sub(oo, 1, 7), str_sub(oo, 1, 8))
+
+```
+
+Okay, NOW we have to convert!!
+
+```{r}
+test %>% as.Date(Start_Date_1, format="%m %d %Y")
+```
+
+Fine, be obstinate and not work, see if I care!!
+
+What's holding it up?
+```{r}
+as.Date("12/21/2020", format = "%m %d %Y")
+as.Date("9/28/20", format = "%m %d %Y")
+```
+
