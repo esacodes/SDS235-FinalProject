@@ -170,7 +170,7 @@ The three (??) phases are:
 
 ## Exploring with the first time period, 13 (Aug 19 - Aug 31)
 
-### Map of the US
+# Map of the US
 
 For this I'm using the packages `usmap`, tutorial from https://cran.r-project.org/web/packages/usmap/vignettes/mapping.html
 
@@ -283,3 +283,59 @@ plot_usmap() +
 ```
 
 
+
+# Statistical Tests!
+
+## Accessing NYT COVID Data from GitHub
+"Data from The New York Times, based on reports from state and local health agencies." https://github.com/nytimes/covid-19-data/blob/master/README.md
+
+```{r}
+us_covid <- read_csv("us.csv")
+```
+
+## Boring population stuff
+
+It'd be great if we could use the rolling averages one because it has per 100k people, but that is, um, a *rolling average*, which doesn't work so well for changes over time... meaning we're also going to have to add population data to this, then wrangle a bit! Yay
+
+Census estimates data from the US Government for July 2019, 
+ - accessed at https://www.census.gov/newsroom/press-kits/2019/national-state-estimates.html -- 
+ - They give the citation: "Estimates of the Total Resident Population and Resident Population Age 18 Years and Older for the United States, States, and Puerto Rico: July 1, 2019 (SCPRC-EST2019-18+POP-RES)
+ Source: U.S. Census Bureau, Population Division			
+ Release Date: December 2019			
+ - In addition, they give the note: "Note: The estimates are based on the 2010 Census and reflect changes to the April 1, 2010 population due to the Count Question Resolution program and geographic program revisions. See Geographic Terms and Definitions at https://www.census.gov/programs-surveys/popest/guidance-geographies/terms-and-definitions.html for a list of the states that are included in each region.  All geographic boundaries for the 2019 population estimates series except statistical area delineations are as of January 1, 2019.  For population estimates methodology statements, see https://www.census.gov/programs-surveys/popest/technical-documentation/methodology.html.  The estimates add births to, subtract deaths from, and add net migration to the enumerated resident population from the 2010 Census.  The enumerated resident population is the total population (citizen and noncitizen) with usual residence in the 50 states and the District of Columbia.  See https://www.census.gov/glossary/#term_Apportionmentpopulation and https://www.census.gov/glossary/#term_Residentpopulation."
+ - I renamed the file because it was very wordy to "Census-EST2019.xlsx", then reformatted the excel file so that it would save as a .csv and converted it; the original file title was "SCPRC-EST2019-18+POP-RES": Estimates of the Total Resident Population and Resident Population Age 18 Years and Older for the United States, States, and Puerto Rico: July 1, 2019
+ 
+```{r}
+us_pop <- read_csv("Census-EST2019.csv")
+```
+
+
+## Okay! Data!
+
+Apparently the total US population was 328,239,523.
+
+To find rate per 100,000 people:
+$rate = \frac{Cases}{Population} * 100,000$
+
+In our case, the new variable `cases_rate` will equal 
+$\frac{cases}{328239523}*100000$
+
+```{r}
+us_covid <- us_covid %>% 
+  mutate(cases_rate = (cases/328239523)*100000)
+```
+
+Now I need to wrangle this into specific time frames!
+These time frames will be based on the specific intervals listed in the main data under `Time Period Start Date`, and `Time Period End Date`.
+
+```{r}
+data %>% 
+  select(`Time Period Start Date`, `Time Period End Date`) %>% 
+  distinct()
+```
+```{r}
+data %>% 
+  filter(Group == "National Estimate")
+```
+
+Next, I need to find a way to group the us_covid data by the time periods in the mental health data.
