@@ -1,0 +1,236 @@
+---
+title: "Explore"
+author: "Nage Ngo"
+date: "5/9/2021"
+output:   
+  html_document:
+    toc: true
+    toc_depth: 3
+    theme: cerulean
+    highlight: tango
+    toc_float: true
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = F, error = F, message = F)
+library(plotly)
+library(tidyverse)
+library(ggplot2)
+# library(usmap)
+library(RColorBrewer)
+library(maps)     # Provides latitude and longitude data for various maps
+```
+
+```{r import}
+data <- read_csv("Mental_Health_Care_in_the_Last_4_Weeks.csv", 
+                 col_types = cols(`Quartile Range` = col_skip(), 
+                                  `Suppression Flag` = col_skip()))
+```
+
+# Temporal by state and indicator
+
+### Took Prescription Medication for Mental Health, Last 4 Weeks
+
+```{r}
+# taking prescription filter
+data_states_13_meds <- data %>% 
+  filter(Indicator == "Took Prescription Medication for Mental Health, Last 4 Weeks",
+         Group == "By State" 
+         #,`Time Period` == 13
+         ) %>% 
+  mutate(State1 = tolower(State)) %>%
+  select(Value, State = State1, Indicator, t = `Time Period`, `Time Period Label`) 
+
+```
+
+
+```{r}
+MainStates <- map_data("state") %>% mutate(State = tolower(region)) 
+merged_pres <- inner_join(MainStates, data_states_13_meds, by = "State")
+# MainStates_lab <- MainStates %>% distinct(region,.keep_all=T)
+
+map_took_pres <- ggplot() + 
+  theme_classic() +
+  geom_polygon(data=merged_pres, 
+          aes(x=long, y=lat, group=group, fill = Value, frame =  t), 
+          color="white", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkred")  +
+  # geom_text(data=MainStates_lab, aes(long, lat, label = region), size=2) +
+  labs(title="Took Prescription Medication for Mental Health, Last 4 Weeks", fill = "%")+
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank())
+
+fig <- ggplotly(map_took_pres) 
+fig <- fig %>% 
+  animation_opts(
+    0, easing = "elastic", redraw = FALSE
+  )
+
+fig$x$frames <- lapply(
+  fig$x$frames, function(f) { 
+    f$data <- lapply(f$data, function(d) d[!names(d) %in% c("x", "y")])
+    f 
+  })
+
+fig
+```
+
+### Received Counseling or Therapy, Last 4 Weeks
+
+```{r}
+data_states_13_thrp <- data %>% 
+  filter(Indicator == "Received Counseling or Therapy, Last 4 Weeks",
+         Group == "By State") %>% 
+  mutate(State1 = tolower(State)) %>%
+  select(Value, State = State1, Indicator, t = `Time Period`, `Time Period Label`) 
+
+# merge with state
+merged_thrp <- inner_join(MainStates, data_states_13_thrp, by = "State")
+
+map_thrp <- ggplot() + 
+  theme_classic() +
+  geom_polygon(data=merged_thrp, 
+          aes(x=long, y=lat, group=group, fill = Value, frame =  t), 
+          color="white", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkred")  +
+  # geom_text(data=MainStates_lab, aes(long, lat, label = region), size=2) +
+  labs(title="Received Counseling or Therapy, Last 4 Weeks", fill = "%")+
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank())
+
+fig2 <- ggplotly(map_thrp) 
+fig2 <- fig2 %>% 
+  animation_opts(
+    0, easing = "elastic", redraw = FALSE
+  )
+
+fig2$x$frames <- lapply(
+  fig2$x$frames, function(f) { 
+    f$data <- lapply(f$data, function(d) d[!names(d) %in% c("x", "y")])
+    f 
+  })
+
+fig2
+```
+
+### Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks
+
+```{r}
+data_states_13_both <- data %>% 
+  filter(Indicator == "Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks",
+         Group == "By State" 
+         #,`Time Period` == 13
+         ) %>% 
+  mutate(State1 = tolower(State)) %>%
+  select(Value, State = State1, Indicator, t = `Time Period`, `Time Period Label`) 
+
+# merge with state
+merged_both <- inner_join(MainStates, data_states_13_both, by = "State")
+
+map_both <- ggplot() + 
+  theme_classic() +
+  geom_polygon(data=merged_both, 
+          aes(x=long, y=lat, group=group, fill = Value, frame =  t), 
+          color="white", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkred")  +
+  # geom_text(data=MainStates_lab, aes(long, lat, label = region), size=2) +
+  labs(title="Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks", fill = "%")+
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank())
+
+fig3 <- ggplotly(map_both) 
+fig3 <- fig3 %>% 
+  animation_opts(
+    0, easing = "elastic", redraw = FALSE
+  )
+
+fig3$x$frames <- lapply(
+  fig3$x$frames, function(f) { 
+    f$data <- lapply(f$data, function(d) d[!names(d) %in% c("x", "y")])
+    f 
+  })
+
+fig3
+```
+
+### Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks
+
+```{r}
+data_states_13_need <- data %>% 
+  filter(Indicator == "Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks",
+         Group == "By State" 
+         #,`Time Period` == 13
+         ) %>% 
+  mutate(State1 = tolower(State)) %>%
+  select(Value, State = State1, Indicator, t = `Time Period`, `Time Period Label`) 
+
+# merge with state
+merged_need <- inner_join(MainStates, data_states_13_need, by = "State")
+
+map_need <- ggplot() + 
+  theme_classic() +
+  geom_polygon(data=merged_need, 
+          aes(x=long, y=lat, group=group, fill = Value, frame =  t), 
+          color="white", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkred")  +
+  # geom_text(data=MainStates_lab, aes(long, lat, label = region), size=2) +
+  labs(title="Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks", fill = "%")+
+  theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank())
+
+fig4 <- ggplotly(map_need) 
+fig4 <- fig4 %>% 
+  animation_opts(
+    0, easing = "elastic", redraw = FALSE
+  )
+
+fig4$x$frames <- lapply(
+  fig4$x$frames, function(f) { 
+    f$data <- lapply(f$data, function(d) d[!names(d) %in% c("x", "y")])
+    f 
+  })
+
+fig4
+```
+
+
+
+# Period mismatch
+
+```{r}
+data%>% 
+  distinct(`Time Period`, 
+           `Time Period Label`)
+```
+Mar 17 - Mar 29	 --> 27
+Dec 22 - Jan 5	--> 1 --> between 21 and 22
+
+
+**period numbers mismatch**
+
+**add national averages**
+
+**add state label**
+
+
+
+
+
+
