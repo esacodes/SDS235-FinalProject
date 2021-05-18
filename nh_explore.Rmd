@@ -20,17 +20,20 @@ library(ggplot2)
 # library(usmap)
 # library(RColorBrewer)
 library(maps)     # Provides latitude and longitude data for various maps
+library(multiscales) #  clauswilke/multiscales: Multivariate scales for 'ggplot2' 
 ```
 
 ```{r import}
 data <- read_csv("Mental_Health_copy.csv", 
                  col_types = cols(`Quartile Range` = col_skip(), 
                                   `Suppression Flag` = col_skip(),
-                                  LowCI = col_skip(),
-                                  HighCI= col_skip(),
-                                  `Confidence Interval`= col_skip())) %>%
+                                  # LowCI = col_skip(),
+                                  # HighCI= col_skip(),
+                                  `Confidence Interval`= col_skip()
+                                  )) %>%
   mutate(t = ifelse(`Time Period`>21, `Time Period`+1,`Time Period`)) %>%
-  mutate(t2 = ifelse(t==1, 22,t)) %>%
+  mutate(t2 = ifelse(t==1, 22,t),
+         CIint = HighCI-LowCI) %>%
   select(-c(t,`Time Period`)) %>% rename(`Time Period`=t2)
 ```
 
@@ -44,39 +47,59 @@ data_states_13_meds <- data %>%
   filter(Indicator == "Took Prescription Medication for Mental Health, Last 4 Weeks",
          Group == "By State" ) %>% 
   mutate(State1 = tolower(State)) %>%
-  select(Value, State = State1, Indicator, t = `Time Period`, `Time Period Label`) 
+  select(Value, CIint, State = State1, Indicator, t = `Time Period`, `Time Period Label`) 
 
 ```
 
-
+Resources for Value-Suppressing Uncertainty Palettes: https://github.com/clauswilke/multiscales
 ```{r}
 MainStates <- map_data("state") %>% mutate(State = tolower(region)) 
 merged_pres <- inner_join(MainStates, data_states_13_meds, by = "State")
 
-# MainStates_lab <- MainStates %>% distinct(region,.keep_all=T)
 region.lab.data <- merged_pres %>%
-  group_by(region) %>% summarise(long=mean(long), lat=mean(lat))
+  group_by(State) %>% summarise(long=mean(long), lat=mean(lat))
+
+# Color for Value-Suppressing Uncertainty Palettes
+colors <- scales::colour_ramp(
+  colors = c(red = "#AC202F", purple = "#740280", blue = "#2265A3")
+)((0:7)/7)
+
+#---- VSUP ggplot
+
+# map_took_pres <- ggplot(merged_pres) +
+#   geom_polygon(aes(x=long, y=lat, group=group, fill = zip(Value, CIint), frame =  t), 
+#                color="white", size = 0.2) +
+#   bivariate_scale("fill",
+#                   pal_vsup(values = colors, max_desat = 0.8, pow_desat = 0.2, max_light = 0.7, pow_light = 1),
+#                   name = c("Percentage", "uncertainty"),
+#                   # limits = list(c(min(merged_pres$Value), max(merged_pres$Value)),
+#                                 # c(min(merged_pres$CIint), max(merged_pres$CIint))),
+#                   breaks = list(waiver(), c(0, 1)),
+#                   # breaks = list(c(10, 15, 20, 25, 30, 35), c(0, 5, 10, 15, 20)),
+#                   labels = list(waiver(), scales::percent),
+#                   guide = "colourfan") + theme_void()
 
 map_took_pres <- ggplot() + 
-  theme_classic() +
   geom_polygon(data=merged_pres, 
           aes(x=long, y=lat, group=group, fill = Value, frame =  t), 
           color="white", size = 0.2) +
-  scale_fill_gradient(low = "lightblue", high = "darkred")  +
-  geom_text(aes(label = region,x = long, y = lat), data = region.lab.data, size=1, alpha = 0.001) +
-  # annotate("text", x = -120, y = 25, label = merged_pres$`Time Period Label`, frame = t) +
-  labs(title="Took Prescription Medication for Mental Health, Last 4 Weeks", fill = "%")+
+  scale_fill_gradient(
+    low = "lightblue", high = "darkred",
+    name = c("Percentage")) + 
+  geom_text(aes(label = State,x = long, y = lat), data = region.lab.data, size=1, alpha = 0.001) +
+  theme_classic()+
   theme(axis.line=element_blank(),
       axis.text.x=element_blank(),
       axis.text.y=element_blank(),
       axis.ticks=element_blank(),
       axis.title.x=element_blank(),
-      axis.title.y=element_blank())
+      axis.title.y=element_blank())+
+  labs(title="Took Prescription Medication for Mental Health, Last 4 Weeks", fill = "%") 
 
 fig <- ggplotly(map_took_pres) 
 fig <- fig %>% 
   animation_opts(
-    0, easing = "elastic", redraw = FALSE
+    50, easing = "elastic", redraw = FALSE
   ) %>%
   animation_slider(
     currentvalue = list(prefix = "Time Period ", font = list(color="red"))
@@ -107,24 +130,29 @@ data_states_13_thrp <- data %>%
 merged_thrp <- inner_join(MainStates, data_states_13_thrp, by = "State")
 
 map_thrp <- ggplot() + 
-  theme_classic() +
+  theme_classic()+
   geom_polygon(data=merged_thrp, 
           aes(x=long, y=lat, group=group, fill = Value, frame =  t), 
           color="white", size = 0.2) +
-  scale_fill_gradient(low = "lightblue", high = "darkred")  +
-  geom_text(aes(label = region,x = long, y = lat), data = region.lab.data, size=1, alpha = 0.001) +
-  labs(title="Received Counseling or Therapy, Last 4 Weeks", fill = "%")+
+  scale_fill_gradient(
+    low = "lightblue", high = "darkred",
+    name = c("Percentage")) + 
+  geom_text(aes(label = State,x = long, y = lat), data = region.lab.data, size=1, alpha = 0.001) +
   theme(axis.line=element_blank(),
-      axis.text.x=element_blank(),
-      axis.text.y=element_blank(),
-      axis.ticks=element_blank(),
-      axis.title.x=element_blank(),
-      axis.title.y=element_blank())
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks=element_blank(),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank())+
+  labs(title="Received Counseling or Therapy, Last 4 Weeks", fill = "%")
 
 fig2 <- ggplotly(map_thrp) 
 fig2 <- fig2 %>% 
   animation_opts(
-    0, easing = "elastic", redraw = FALSE
+    50, easing = "elastic", redraw = FALSE
+  )%>%
+  animation_slider(
+    currentvalue = list(prefix = "Time Period ", font = list(color="red"))
   )
 
 fig2$x$frames <- lapply(
@@ -155,8 +183,10 @@ map_both <- ggplot() +
   geom_polygon(data=merged_both, 
           aes(x=long, y=lat, group=group, fill = Value, frame =  t), 
           color="white", size = 0.2) +
-  scale_fill_gradient(low = "lightblue", high = "darkred")  +
-  # geom_text(data=MainStates_lab, aes(long, lat, label = region), size=2) +
+  scale_fill_gradient(
+    low = "lightblue", high = "darkred",
+    name = c("Percentage")) + 
+  geom_text(aes(label = State,x = long, y = lat), data = region.lab.data, size=1, alpha = 0.001) +
   labs(title="Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks", fill = "%")+
   theme(axis.line=element_blank(),
       axis.text.x=element_blank(),
@@ -168,7 +198,10 @@ map_both <- ggplot() +
 fig3 <- ggplotly(map_both) 
 fig3 <- fig3 %>% 
   animation_opts(
-    0, easing = "elastic", redraw = FALSE
+    50, easing = "elastic", redraw = FALSE
+  )%>%
+  animation_slider(
+    currentvalue = list(prefix = "Time Period ", font = list(color="red"))
   )
 
 fig3$x$frames <- lapply(
@@ -199,8 +232,10 @@ map_need <- ggplot() +
   geom_polygon(data=merged_need, 
           aes(x=long, y=lat, group=group, fill = Value, frame =  t), 
           color="white", size = 0.2) +
-  scale_fill_gradient(low = "lightblue", high = "darkred")  +
-  # geom_text(data=MainStates_lab, aes(long, lat, label = region), size=2) +
+  scale_fill_gradient(
+    low = "lightblue", high = "darkred",
+    name = c("Percentage")) + 
+  geom_text(aes(label = State,x = long, y = lat), data = region.lab.data, size=1, alpha = 0.001) +
   labs(title="Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks", fill = "%")+
   theme(axis.line=element_blank(),
       axis.text.x=element_blank(),
@@ -212,7 +247,10 @@ map_need <- ggplot() +
 fig4 <- ggplotly(map_need) 
 fig4 <- fig4 %>% 
   animation_opts(
-    0, easing = "elastic", redraw = FALSE
+    50, easing = "elastic", redraw = FALSE
+  )%>%
+  animation_slider(
+    currentvalue = list(prefix = "Time Period ", font = list(color="red"))
   )
 
 fig4$x$frames <- lapply(
@@ -255,6 +293,7 @@ Dec 22 - Jan 5	--> 1 --> between 21 and 22
 By indicator, Drop down info: state, gender, race
 
 ```{r, eval = F}
+## Resource https://plotly.com/r/choropleth-maps/
 
 data_state_pres <- data %>% 
   filter(Indicator == "Took Prescription Medication for Mental Health, Last 4 Weeks")%>%
