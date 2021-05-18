@@ -1,31 +1,55 @@
 ---
 title: "Esa's Exploratory Analysis"
-output: html_document
+subtitle: "SDS 235 Final Project"
+author: "Esa Schenck"
+date: "`r format(Sys.Date(), '%B %e, %Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    fig_width: 7
+    fig_height: 6
+    fig_caption: true
+    code_folding: show
+    df_print: paged
+editor_options: 
+  chunk_output_type: inline
 ---
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Set Up
+
 ```{r}
 library(tidyverse)
+library(lubridate)
 ```
 
-# Loading & Setting Up Data
+```{r}
+us_covid <- read_csv("us.csv") %>% 
+  mutate(cases_rate = (cases/328239523)*100000)
+
+tidied_data <- read_csv("data_correct_dates.csv")
+```
+
+Here I'm putting the essential things that I need to load (e.g. the latest version of the data I'm working with, the packages being used) in order to continue. In order to keep the chronological format that is useful for me to organize my work with, I'll simply put copies of code chunks here when I realize they're essential, and then set the chronological code chunk to eval=FALSE. In addition, note that I'm setting most of the 'working' code to eval=FALSE so that it doesn't take forever to knit when I was only using something as scratchwork and am done with it now.
+
+
+# Initial Loading & Setting Up Data
 
 ```{r}
 data <- read_csv("Mental_Health_Care_in_the_Last_4_Weeks.csv")
 ```
 
-```{r}
+```{r, eval=FALSE}
 glimpse(data)
 ```
 
-# Beginning exploratory data analysis
-
-The first excursion into this data, yay!
-
-## What does the data look like??
+# What does the data look like?
 
 To be honest, the formatting of this data somewhat confuses me and I feel as though I don't understand exactly what all of the variables and conditions are -- this will help fix that!
 
@@ -48,7 +72,7 @@ To be honest, the formatting of this data somewhat confuses me and I feel as tho
  - Suppression Flag *(mostly NA values)*
 
 
-### What are the possible values for each column?
+## What are the possible values for each column?
 
 ```{r, eval = FALSE}
 #Used to find all of the following values (not actually relevant to any data analysis)
@@ -168,7 +192,6 @@ The three (??) phases are:
 |     27 |	Mar 17 - Mar 29 | 03/17/2021 12:00:00 AM          |
 
 
-## Exploring with the first time period, 13 (Aug 19 - Aug 31)
 
 # Map of the US
 
@@ -265,7 +288,7 @@ plot_usmap(data=data_states_13_meds, values = "Value", color = "white", labels =
 
 
 Just a map mostly copied from the example, for help finding the correct coordinates:
-```{r}
+```{r, eval=FALSE}
 #earthquakes
 eq_transformed <- usmap_transform(earthquakes)
 
@@ -284,16 +307,16 @@ plot_usmap() +
 
 
 
-# Statistical Tests!
+# Data wrangling
 
 ## Accessing NYT COVID Data from GitHub
 "Data from The New York Times, based on reports from state and local health agencies." https://github.com/nytimes/covid-19-data/blob/master/README.md
 
-```{r}
+```{r, eval=FALSE}
 us_covid <- read_csv("us.csv")
 ```
 
-## Boring population stuff
+## Cases per 100k
 
 It'd be great if we could use the rolling averages one because it has per 100k people, but that is, um, a *rolling average*, which doesn't work so well for changes over time... meaning we're also going to have to add population data to this, then wrangle a bit! Yay
 
@@ -305,12 +328,10 @@ Census estimates data from the US Government for July 2019,
  - In addition, they give the note: "Note: The estimates are based on the 2010 Census and reflect changes to the April 1, 2010 population due to the Count Question Resolution program and geographic program revisions. See Geographic Terms and Definitions at https://www.census.gov/programs-surveys/popest/guidance-geographies/terms-and-definitions.html for a list of the states that are included in each region.  All geographic boundaries for the 2019 population estimates series except statistical area delineations are as of January 1, 2019.  For population estimates methodology statements, see https://www.census.gov/programs-surveys/popest/technical-documentation/methodology.html.  The estimates add births to, subtract deaths from, and add net migration to the enumerated resident population from the 2010 Census.  The enumerated resident population is the total population (citizen and noncitizen) with usual residence in the 50 states and the District of Columbia.  See https://www.census.gov/glossary/#term_Apportionmentpopulation and https://www.census.gov/glossary/#term_Residentpopulation."
  - I renamed the file because it was very wordy to "Census-EST2019.xlsx", then reformatted the excel file so that it would save as a .csv and converted it; the original file title was "SCPRC-EST2019-18+POP-RES": Estimates of the Total Resident Population and Resident Population Age 18 Years and Older for the United States, States, and Puerto Rico: July 1, 2019
  
-```{r}
+```{r, eval=FALSE}
 us_pop <- read_csv("Census-EST2019.csv")
 ```
 
-
-## Okay! Data!
 
 Apparently the total US population was 328,239,523.
 
@@ -320,21 +341,24 @@ $rate = \frac{Cases}{Population} * 100,000$
 In our case, the new variable `cases_rate` will equal 
 $\frac{cases}{328239523}*100000$
 
-```{r}
+```{r, eval=FALSE}
 us_covid <- us_covid %>% 
   mutate(cases_rate = (cases/328239523)*100000)
 ```
+
+
+## Tidying the time period format
 
 Now I need to wrangle this into specific time frames!
 These time frames will be based on the specific intervals listed in the main data under `Time Period Start Date`, and `Time Period End Date`.
 
 
-```{r}
+```{r, eval=FALSE}
 data %>% 
   select(`Time Period Start Date`, `Time Period End Date`) %>% 
   distinct()
 ```
-```{r}
+```{r, eval=FALSE}
 data %>% 
   filter(Group == "National Estimate") %>% 
   select(Indicator, `Time Period Start Date`, `Time Period End Date`, `Time Period Label`, Value)
@@ -348,14 +372,14 @@ assign something based on if a value is true
 
 But first, I realized that the main data abruptly switches date format
 
-```{r}
+```{r, eval=FALSE}
 end_date <- data %>% select(`Time Period End Date`)
 lapply(end_date, class)
 ```
 
 
 If else from https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/ifelse
-```{r}
+```{r, eval=FALSE}
 test <- data %>% 
   group_by(`Time Period Start Date`) %>% 
   mutate(Start_Date_1 = (ifelse(nchar(`Time Period Start Date`)==22, #if it's in the MM/DD/YYYY 12:00:00 AM format, then it takes the first ten characters
@@ -372,12 +396,12 @@ test <- data %>%
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 data %>% mutate(try_to_substr = str_sub(`Time Period Start Date`, 1, 10))
 ```
 
 **Did it work?**
-```{r}
+```{r, eval=FALSE}
 test %>% 
   distinct(Start_Date_1)
 ```
@@ -387,7 +411,7 @@ PROBLEM FIGURED OUT: I was using length() instead of nchar() -- the former is th
 nchar from https://stackoverflow.com/questions/11134812/how-to-find-the-length-of-a-string-in-r
 
 **Figuring out how to use str_sub**
-```{r}
+```{r, eval=FALSE}
 am <- "12/21/2020 12:00:00 AM"
 class(am)
 paste("12/21/2020 12:00:00 AM has", nchar(am), "letters")
@@ -416,18 +440,18 @@ ifelse(nchar(oo)==12, str_sub(oo, 1, 7), str_sub(oo, 1, 8))
 
 Okay, NOW we have to convert!!
 
-```{r}
+```{r, eval=FALSE}
 test %>% as.Date(Start_Date_1, format="%m %d %Y")
 ```
 
 Fine, be obstinate and not work, see if I care!!
 
 What's holding it up?
-```{r}
+```{r, eval=FALSE}
 library(lubridate)
 ```
 
-```{r}
+```{r, eval=FALSE}
 mdy(12/21/2020)
 mdy(str_remove("12/21/2020", "/"))
 mdy(12212020)
@@ -436,7 +460,7 @@ mdy(12212020)
 Now, going back to the code we had for the df `test`, let's see if we can make these dates!!
 
 need to use str_remove_all for this: https://stackoverflow.com/questions/27044727/removing-characters-from-string-in-r
-```{r}
+```{r, eval=FALSE}
 test_2 <- data %>% 
   group_by(`Time Period Start Date`) %>% 
   mutate(Start_Date = (ifelse(nchar(`Time Period Start Date`)==22, #if it's in the MM/DD/YYYY 12:00:00 AM format, then it takes the first ten characters
@@ -455,12 +479,12 @@ test_2 <- data %>%
 ```
 
 Okay, that doesn't work when we add mdy() because of the variations in length -- if we try `mdy(str_remove_all("12/7/20", "/"))`, it doesn't work because it doesn't have enough characters to recognize. Is 12720 the date for 1/27/20 or 12/7/20? I need to find a way to... hmm might it recognize - instead of /?
-```{r}
+```{r, eval=FALSE}
 mdy("12-7-20")
 ```
 Yes! HAHA it works!! So instead of str_remove_all, we need str_replace_all!
 
-```{r}
+```{r, eval=FALSE}
 test2 <- data %>% 
   group_by(`Time Period Start Date`) %>% 
   mutate(Start_Date = (ifelse(nchar(`Time Period Start Date`)==22, #if it's in the MM/DD/YYYY 12:00:00 AM format, then it takes the first ten characters
@@ -485,7 +509,7 @@ Now we just need to get end dates on it!!
 
 Okay, I'm done typing out this long ifelse statement, time to write a *function*!
 
-```{r}
+```{r, eval=FALSE}
 tidy_dates <- function(column){
 
 mdy(ifelse(nchar(column)==22, #if it's in the MM/DD/YYYY 12:00:00 AM format, then it takes the first ten characters
@@ -501,14 +525,198 @@ mdy(ifelse(nchar(column)==22, #if it's in the MM/DD/YYYY 12:00:00 AM format, the
 }
 ```
 
-```{r}
+```{r, eval=FALSE}
 data_correct_dates <- data %>% 
   group_by(`Time Period Start Date`) %>% 
   mutate(Start_Date = tidy_dates(`Time Period Start Date`),
          End_Date = tidy_dates(`Time Period End Date`))
 ```
 
-```{r}
+write_csv from https://www.statology.org/export-data-frame-to-csv-in-r/
+```{r, eval=FALSE}
 write_csv(data_correct_dates, "data_correct_dates.csv")
 ```
 
+```{r, eval=FALSE}
+tidied_data <- read_csv("data_correct_dates.csv")
+```
+
+
+## Joining with covid data
+
+### First, creating time intervals in the nyt covid data
+
+What ARE the time intervals in the tidied data?
+```{r, eval=FALSE}
+tidied_data %>% 
+  group_by(`Time Period`) %>% 
+  select(`Time Period`, `Time Period Label`) %>% 
+  distinct()
+```
+
+|Time Periods     |Time Period Label| Month |
+|----------------:|:----------------|:------|
+|Aug 19 - Aug 31 2020	|	13 | 8
+|Sep 2 - Sep 14 2020  | 14 | 9
+|Sep 16 - Sep 28 2020	|	15| 9
+|Sep 30 - Oct 12 2020	|	16| 9 - 10
+|Oct 14 - Oct 26 2020	|	17| 10
+|Oct 28 - Nov 9 2020	| 18| 10 - 11
+|Nov 11 - Nov 23 2020	|	19| 11
+|Nov 25 - Dec 7 2020	| 20| 11 - 12
+|Dec 9 - Dec 21 2020	| 21| 12
+|Dec 22 - Jan 5 2021  | 1 | 12 - 1
+|Jan 6 - Jan 18 2021	| 22| 1
+|Jan 20 - Feb 1 2021	| 23| 1 - 2
+|Feb 3 - Feb 15 2021	| 24| 2 
+|Feb 17 - Mar 1 2021	| 25| 2 - 3 
+|Mar 3 - Mar 15 2021	| 26| 3
+|Mar 17 - Mar 29 2021 | 27| 3
+
+First have to break the dates down into these intervals.
+
+Sep 30 - Oct 12 2020	|	16| 9 - 10
+|Oct 14 - Oct 26 2020	|	17| 10
+|Oct 28 - Nov 9 2020	| 18| 10 - 11
+
+FIGURE OUT YEAR -- IT MIGHT HAVE DUPLICATES BC OF MONTH
+
+
+```{r sort_dates_func, eval = FALSE}
+sort_dates <- function(date){
+  year = year(date)
+  month = month(date)
+  day = day(date)
+  
+  if (year == 2020) {
+    #now follows EVERYTHING for 2020
+    
+    if (month == 8) {
+    #aug 19-31 is 13, everything else in aug is NA
+      if ((day >= 19) & (day <= 31)) {time_period = 13} else {time_period = NA}
+    } else { #NOT august
+      
+      if (month == 9) {
+      #september 2-14 is 14, 16-28 is 15, 30 is 16, else in sept is NA
+        if ((day >= 2) & (day <= 14)) {time_period = 14} else {
+          if ((day >= 16) & (day <= 28)) {time_period = 15} else {
+            if (day == 30) {time_period = 16} else {time_period = NA}
+          }
+        }
+      } else { #not september
+        
+        if (month == 10) {
+        #october 1-12 is 16, 14-26 is 17, 28-31 is 18, else NA
+          if ((day >= 1) & (day <= 12)) {time_period = 16} else {
+            if ((day >= 14) & (day <= 26)) {time_period = 17} else {
+              if ((day >= 28) & (day <= 31)) {time_period = 18} else {time_period = NA}
+            }
+          }
+        } else { #not october
+          
+          if (month == 11) {
+          #november 1-9 is 18, 11-23 is 19, 25-30 is 20, else NA
+            if ((day >= 1) & (day <= 9)) {time_period = 18} else {
+              if ((day >= 11) & (day <= 23)) {time_period = 19} else {
+                if ((day >= 25) & (day <= 30)) {time_period = 20} else {time_period = NA}
+              }
+            }
+          } else { #not november 
+            
+            if (month == 12) {
+              #december 1-7 is 20, 9-21 is 21, 22-31 is 1, else NA
+              if ((day >=1) & (day <= 7)) {time_period = 20} else {
+                if ((day >= 9) & (day <= 21)) {time_period = 21} else {
+                  if ((day >= 22) & (day <= 31)) {time_period = 1} else {time_period = NA}
+                }
+              }
+              
+            } else {time_period = NA} #if it's not any of these months, it's NA
+          } #end not-november
+        } #end not-october
+      } #end not-september
+    } #end not-august
+  } #end 2020
+
+
+  if (year == 2021) {
+    #now follows EVERYTHING for 2021
+    
+    if (month == 1) {
+    #january 1-5 is 1, 6-18 is 22, 20-31 is 23, else NA
+      if ((day >= 1) & (day <= 5)) {time_period = 1} else {
+        if ((day >= 6) & (day <= 22)) {time_period = 22} else {
+          if ((day >= 20) & (day <= 31)) {time_period = 23} else {time_period = NA}
+        }
+      }
+    } else { #NOT january
+      
+      if (month == 2) {
+      #february 1 is 23, 3-15 is 24, 17-28 is 25, else NA 
+        if (day == 1) {time_period = 23} else {
+          if ((day >= 3) & (day <= 15)) {time_period = 24} else {
+            if ((day >= 17) & (day <= 28)) {time_period = 25} else {time_period = NA}
+          }
+        }
+      } else { #not february
+         
+        if (month == 3) {
+        #march 1 is 25, 3-15 is 26, 17-29 is 27, else NA
+          if (day == 1) {time_period = 25} else {
+            if ((day >= 3) & (day <= 15)) {time_period = 26} else {
+              if ((day >= 17) & (day <= 29)) {time_period = 27} else {time_period = NA}
+            }
+          }
+        } else {time_period = NA} #if not march, NA
+      } #end not february
+    } #end not-january
+  } #end 2021 
+
+  time_period
+  
+} #end the function definition
+```
+
+
+```{r}
+#if i just do the mutate, then sort_dates() doesn't work because it takes only one argument and returns one. BUT if I group by date (which works in this case because there's only one row per each unique date) then the function works!!
+
+covid_dated <- us_covid %>%  % %
+  group_by(date) %>% 
+  mutate(period = sort_dates(date))
+```
+References:
+
+ - if else statements: https://www.datamentor.io/r-programming/if-else-statement/
+ - & operator https://www.r-bloggers.com/2010/12/logical-operators-in-r/
+
+
+### Joining NYT covid and tidied_data
+
+```{r}
+covid_new <- covid_dated %>% na.omit()
+tidied_new <- tidied_data %>% mutate(period = `Time Period`) %>% 
+  select(-Phase, -`Time Period Start Date`, -`Time Period End Date`, -`Time Period`, -`Quartile Range`, -`Suppression Flag`)
+new_data <- tidied_new %>% 
+  left_join(covid_new, by = "period")
+```
+
+
+
+# Fun time: confidence intervals and color palette??
+
+```{r}
+#min(tidied_data$Value)
+tidied_data %>% 
+  select(-`Quartile Range`, -`Suppression Flag`, -Phase) %>% 
+  na.omit() %>% 
+  #group_by(Group) %>% 
+  summarise(min = min(HighCI-LowCI),
+            max = max(HighCI-LowCI))
+```
+
+Okay, there really seems to be some variation in confidence intervals!! That indicates that it might be worth trying to use those value-suppressing uncertainty palettes!!
+
+
+
+# Working with new_data
