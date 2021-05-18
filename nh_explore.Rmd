@@ -18,14 +18,20 @@ library(plotly)
 library(tidyverse)
 library(ggplot2)
 # library(usmap)
-library(RColorBrewer)
+# library(RColorBrewer)
 library(maps)     # Provides latitude and longitude data for various maps
 ```
 
 ```{r import}
-data <- read_csv("Mental_Health_Care_in_the_Last_4_Weeks.csv", 
+data <- read_csv("Mental_Health_copy.csv", 
                  col_types = cols(`Quartile Range` = col_skip(), 
-                                  `Suppression Flag` = col_skip()))
+                                  `Suppression Flag` = col_skip(),
+                                  LowCI = col_skip(),
+                                  HighCI= col_skip(),
+                                  `Confidence Interval`= col_skip())) %>%
+  mutate(t = ifelse(`Time Period`>21, `Time Period`+1,`Time Period`)) %>%
+  mutate(t2 = ifelse(t==1, 22,t)) %>%
+  select(-c(t,`Time Period`)) %>% rename(`Time Period`=t2)
 ```
 
 # Temporal by state and indicator
@@ -36,9 +42,7 @@ data <- read_csv("Mental_Health_Care_in_the_Last_4_Weeks.csv",
 # taking prescription filter
 data_states_13_meds <- data %>% 
   filter(Indicator == "Took Prescription Medication for Mental Health, Last 4 Weeks",
-         Group == "By State" 
-         #,`Time Period` == 13
-         ) %>% 
+         Group == "By State" ) %>% 
   mutate(State1 = tolower(State)) %>%
   select(Value, State = State1, Indicator, t = `Time Period`, `Time Period Label`) 
 
@@ -48,7 +52,10 @@ data_states_13_meds <- data %>%
 ```{r}
 MainStates <- map_data("state") %>% mutate(State = tolower(region)) 
 merged_pres <- inner_join(MainStates, data_states_13_meds, by = "State")
+
 # MainStates_lab <- MainStates %>% distinct(region,.keep_all=T)
+region.lab.data <- merged_pres %>%
+  group_by(region) %>% summarise(long=mean(long), lat=mean(lat))
 
 map_took_pres <- ggplot() + 
   theme_classic() +
@@ -56,7 +63,8 @@ map_took_pres <- ggplot() +
           aes(x=long, y=lat, group=group, fill = Value, frame =  t), 
           color="white", size = 0.2) +
   scale_fill_gradient(low = "lightblue", high = "darkred")  +
-  # geom_text(data=MainStates_lab, aes(long, lat, label = region), size=2) +
+  geom_text(aes(label = region,x = long, y = lat), data = region.lab.data, size=1, alpha = 0.001) +
+  # annotate("text", x = -120, y = 25, label = merged_pres$`Time Period Label`, frame = t) +
   labs(title="Took Prescription Medication for Mental Health, Last 4 Weeks", fill = "%")+
   theme(axis.line=element_blank(),
       axis.text.x=element_blank(),
@@ -69,7 +77,13 @@ fig <- ggplotly(map_took_pres)
 fig <- fig %>% 
   animation_opts(
     0, easing = "elastic", redraw = FALSE
-  )
+  ) %>%
+  animation_slider(
+    currentvalue = list(prefix = "Time Period ", font = list(color="red"))
+  ) #%>%
+  # layout(annotations = list(x = -120, y = 25, text = paste("Time Period: ",
+  #   merged_pres$`Time Period Label`), showarrow = F))
+  
 
 fig$x$frames <- lapply(
   fig$x$frames, function(f) { 
@@ -98,7 +112,7 @@ map_thrp <- ggplot() +
           aes(x=long, y=lat, group=group, fill = Value, frame =  t), 
           color="white", size = 0.2) +
   scale_fill_gradient(low = "lightblue", high = "darkred")  +
-  # geom_text(data=MainStates_lab, aes(long, lat, label = region), size=2) +
+  geom_text(aes(label = region,x = long, y = lat), data = region.lab.data, size=1, alpha = 0.001) +
   labs(title="Received Counseling or Therapy, Last 4 Weeks", fill = "%")+
   theme(axis.line=element_blank(),
       axis.text.x=element_blank(),
@@ -232,5 +246,38 @@ Dec 22 - Jan 5	--> 1 --> between 21 and 22
 
 
 
+
+
+
+
+# Hover for drop down
+
+By indicator, Drop down info: state, gender, race
+
+```{r, eval = F}
+
+data_state_pres <- data %>% 
+  filter(Indicator == "Took Prescription Medication for Mental Health, Last 4 Weeks")%>%
+  pivot_wider(names_from = c("Subgroup"), values_from = "Value") %>%
+  distinct(.keep_all = T)
+# data$hover <- with(data, paste(State, '<br>', "Female", Female, "Male", Male, "<br>",
+#                                "Hispanic or Latino", `Hispanic or Latino`, "<br>",
+#                                "White", `Non-Hispanic white, single race`,
+#                                "Asian", `Non-Hispanic Asian, single race`,"<br>",
+#                                "Black", `Non-Hispanic black, single race`, "Other/Multiple Races", 
+#                                `Non-Hispanic, other races and multiple races`))
+# 
+# fig <- plot_geo(df, locationmode = 'USA-states')
+# fig <- fig %>% add_trace(
+#     z = ~total.exports, text = ~hover, locations = ~code,
+#     color = ~total.exports, colors = 'Purples'
+#   )
+# fig <- fig %>% colorbar(title = "Millions USD")
+# fig <- fig %>% layout(
+#     title = '2011 US Agriculture Exports by State<br>(Hover for breakdown)'
+#   )
+# 
+# fig
+```
 
 
