@@ -1,0 +1,202 @@
+---
+title: "Final Scatterplot"
+subtitle: "SDS 235 Final Project"
+author: "Esa Schenck"
+date: "`r format(Sys.Date(), '%B %e, %Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    fig_width: 7
+    fig_height: 6
+    fig_caption: true
+    code_folding: hide
+    df_print: paged
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r setup, message=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning=FALSE)
+```
+
+# Set Up
+
+```{r}
+#Loading packages
+library(tidyverse)
+library(RColorBrewer)
+library(gridExtra)
+library(ggplot2)
+```
+
+```{r}
+#Loading dataset
+new_data_fixed <- read_csv("new_data_fixed.csv")
+```
+
+
+```{r}
+#Function to make each plot
+make_plot <- function(ind, grp){
+  
+  caption <- ""
+  
+  #Indicator things
+  title <- ind %>% str_sub(1, -15)
+  
+  if (ind == "Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks") {
+    title <- "Took Medication And/Or Received Counseling or Therapy"
+  }
+  if (ind == "Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks") {
+    title <- "Needed But Didn't Get Counseling"
+  }
+  
+  y_axis_title <- paste("% of Adults Who", title)
+  
+  #Group things
+  if (grp == "By Age") {
+    leg_title <- "Age (years)"
+    leg_breaks <- c("18 - 29 years", "30 - 39 years", "40 - 49 years", "50 - 59 years", "60 - 69 years", "70 - 79 years", "80 years and above")
+    leg_labels <- c("18 - 29", "30 - 39", "40 - 49", "50 - 59", "60 - 69", "70 - 79", "80 +")
+    num <- 7
+  }
+  
+  if (grp == "By Sex") {
+    leg_title <- "Sex (binary M/F)"
+    leg_breaks <- c("Male", "Female")
+    leg_labels <- c("Male", "Female")
+    caption <- "Note: These labels may not accurately reflect the gender identities of all survey participants"
+    num <- 2
+  }
+  
+  if (grp == "By Education") {
+    leg_title <- "Education Level"
+    leg_breaks <- c("Bachelor's degree or higher", "Some college/Associate's degree", "High school diploma or GED", "Less than a high school diploma")
+    leg_labels <- c("Bachelor's", "Some College", "High School", "Less than HS")
+    num <- 4
+  }
+  
+  if (grp == "By Presence of Symptoms of Anxiety/Depression") {
+    leg_title <- "Symptoms of Anxiety/Depression"
+    leg_breaks <- c("Did not experience symptoms of anxiety/depression in the past 4 weeks", "Experienced symptoms of anxiety/depression in past 4 weeks")
+    leg_labels <- c("Experienced Symptoms", "No Symptoms")
+    caption <- "Note: These data may not accurately reflect the mental health of all survey participants"
+    num <- 2
+  }
+  
+  if (grp == "By Race/Hispanic ethnicity") {
+    leg_title <- "Race/Hispanic ethnicity"
+    leg_breaks <- c("Hispanic or Latino", "Non-Hispanic white, single race", "Non-Hispanic black, single race", "Non-Hispanic Asian, single race", "Non-Hispanic, other races and multiple races")
+    leg_labels <- c("Hispanic or Latino", "Non-Hispanic white", "Non-Hispanic black", "Non-Hispanic Asian", "Non-Hispanic, other")
+    caption <- "Note: These labels may not accurately reflect the racial/ethnic background of all survey participants"
+    num <- 5
+  }
+  
+  my_colors <- brewer.pal(num, "Set1")
+  
+  #Making the darn plot
+  plot <- new_data_fixed %>% 
+    filter(Group == grp,
+           Indicator == ind) %>% 
+    na.omit() %>% #need to omit in order for the geom_ribbon to work
+    ggplot(aes(x = avg_cases, y = (Value/100))) +
+    geom_ribbon(aes(ymin = (LowCI/100), ymax = (HighCI/100), fill = Subgroup), alpha = .1, show.legend = FALSE) +
+    geom_point(aes(color = Subgroup)) +
+    labs(title = title, subtitle = "Given the number of COVID cases during the time period", caption = caption) +
+    theme(legend.position = "right") +
+    scale_color_manual(values = my_colors, name = leg_title, breaks = leg_breaks, labels = leg_labels) +
+    scale_fill_manual(values = my_colors, breaks = leg_breaks, labels = leg_labels) +
+    theme_classic() +
+    scale_x_continuous("Average Daily COVID-19 Cases in the US", labels = scales::comma_format()) +
+    scale_y_continuous(y_axis_title, labels = scales::percent_format(accuracy = 5L)) 
+  
+  plot
+}
+```
+
+
+
+
+# Variables
+
+**The user can view four different mental health indicators over five different population groups.**
+
+*The mental health indicators are:* US Adults Who...
+
+ - Took Prescription Medication for Mental Health, Last 4 Weeks
+ - Received Counseling or Therapy, Last 4 Weeks
+ - Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks
+ - Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks
+
+*Grouped...*
+
+ - By Age
+ - By Sex
+ - By Presence of Symptoms of Anxiety/Depression
+ - By Race/Hispanic ethnicity
+ - By Education
+
+**Here, we're assuming that the user is interested in all of the indicators for one specific grouping.**
+
+# By Age
+
+```{r}
+age1 <- make_plot("Took Prescription Medication for Mental Health, Last 4 Weeks", "By Age")
+age2 <- make_plot("Received Counseling or Therapy, Last 4 Weeks", "By Age")
+age3 <- make_plot("Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks", "By Age")
+age4 <- make_plot("Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks", "By Age")
+
+grid.arrange(age1, age2, age3, age4, ncol=2, nrow =2)
+```
+
+# By Sex
+
+```{r}
+sex1 <- make_plot("Took Prescription Medication for Mental Health, Last 4 Weeks", "By Sex")
+sex2 <- make_plot("Received Counseling or Therapy, Last 4 Weeks", "By Sex")
+sex3 <- make_plot("Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks", "By Sex")
+sex4 <- make_plot("Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks", "By Sex")
+```
+```{r}
+grid.arrange(sex1, sex2, sex3, sex4, ncol=2, nrow =2)
+```
+
+# By Presence of Symptoms of Anxiety/Depression
+ 
+```{r}
+symptoms1 <- make_plot("Took Prescription Medication for Mental Health, Last 4 Weeks", "By Presence of Symptoms of Anxiety/Depression")
+symptoms2 <- make_plot("Received Counseling or Therapy, Last 4 Weeks", "By Presence of Symptoms of Anxiety/Depression")
+symptoms3 <- make_plot("Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks", "By Presence of Symptoms of Anxiety/Depression")
+symptoms4 <- make_plot("Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks", "By Presence of Symptoms of Anxiety/Depression")
+```
+```{r}
+grid.arrange(symptoms1, symptoms2, symptoms3, symptoms4, ncol=2, nrow =2)
+```
+
+# By Race/Hispanic ethnicity
+
+```{r}
+race1 <- make_plot("Took Prescription Medication for Mental Health, Last 4 Weeks", "By Race/Hispanic ethnicity")
+race2 <- make_plot("Received Counseling or Therapy, Last 4 Weeks", "By Race/Hispanic ethnicity")
+race3 <- make_plot("Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks", "By Race/Hispanic ethnicity")
+race4 <- make_plot("Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks", "By Race/Hispanic ethnicity")
+```
+```{r}
+grid.arrange(race1, race2, race3, race4, ncol=2, nrow =2)
+```
+
+# By Education
+
+```{r}
+education1 <- make_plot("Took Prescription Medication for Mental Health, Last 4 Weeks", "By Education")
+education2 <- make_plot("Received Counseling or Therapy, Last 4 Weeks", "By Education")
+education3 <- make_plot("Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks", "By Education")
+education4 <- make_plot("Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks", "By Education")
+```
+```{r}
+grid.arrange(education1, education2, education3, education4, ncol=2, nrow =2)
+```
+

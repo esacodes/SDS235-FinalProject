@@ -47,7 +47,9 @@ data <- read_csv("Mental_Health_Care_in_the_Last_4_Weeks.csv")
 ```
 
 ```{r, eval=FALSE}
-glimpse(data)
+data %>% 
+  select(`Time Period Start Date`, `Time Period End Date`) %>% 
+  distinct()
 ```
 
 # What does the data look like?
@@ -506,6 +508,7 @@ test2 <- data %>%
 
 IT WORKED IT WORKED IT WORKED!!
 
+
 Now we just need to get end dates on it!!
 
 Okay, I'm done typing out this long ifelse statement, time to write a *function*!
@@ -788,6 +791,16 @@ p3 <- new_data %>%
   ggplot(aes(x = Start_Date, y = total_cases)) +
   geom_point() +
   labs(title = "Date vs. Cases")
+
+p3
+```
+
+
+```{r}
+new_data %>% 
+  filter(Group=="National Estimate",
+         Indicator == "Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks") %>% 
+  
 ```
 
 
@@ -882,27 +895,184 @@ new_data %>%
 ## Let's get plots for one indicator exactly the way we want them
 
 ```{r}
-my_colors <- RColorBrewer::brewer.pal(6, "BuGn")[6:3]
+#my_colors <- c(brewer.pal(9, "BuGn")[3], brewer.pal(9, "BuGn")[5], brewer.pal(9, "BuGn")[7], brewer.pal(9, "BuGn")[9])
+my_colors <- brewer.pal(4, "Set1")
 
 new_data %>% 
   filter(Group == "By Education",
          Indicator == "Received Counseling or Therapy, Last 4 Weeks") %>% 
-  ggplot(aes(x = total_cases, y = Value)) +
-  #geom_ribbon(aes(x = total_cases, ymax = HighCI, ymin = LowCI, fill = Subgroup), alpha = .1, show.legend = FALSE) +
+  na.omit() %>% #need to omit in order for the geom_ribbon to work
+  ggplot(aes(x = total_cases, y = (Value/100))) +
+  geom_ribbon(aes(ymin = (LowCI/100), ymax = (HighCI/100), fill = Subgroup), alpha = .1, show.legend = FALSE) +
   geom_point(aes(color = Subgroup)) +
-  labs(title = "Access to Counseling or Therapy Over the Pandemic", subtitle = "Given number of COVID patients") +
+  #geom_smooth(aes(color = Subgroup), method=lm) +
+  #geom_pointrange(aes(ymin = (LowCI/100), ymax = (HighCI/100), color = Subgroup), alpha = .4) +
+  labs(title = "Access to Counseling or Therapy Over the Pandemic", subtitle = "Given the number of COVID cases during the time period") +
   theme(legend.position = "right") +
   scale_color_manual(values = my_colors, name = "Education Level", breaks = c("Bachelor's degree or higher", "Some college/Associate's degree", "High school diploma or GED", "Less than a high school diploma"), labels = c("Bachelor's", "Some College", "High School", "Less than HS")) +
-  #scale_fill_manual(values = my_colors) +
+  scale_fill_manual(values = my_colors, breaks = c("Bachelor's degree or higher", "Some college/Associate's degree", "High school diploma or GED", "Less than a high school diploma"), labels = c("Bachelor's", "Some College", "High School", "Less than HS")) +
   theme_classic() +
-  scale_x_continuous("COVID-19 Cases in the US During the Time Period") +
-  scale_y_continuous("% of US Adults Who Received Counseling") 
+  scale_x_continuous("COVID-19 Cases in the US", labels = scales::comma_format()) +
+  scale_y_continuous("% of US Adults Who Received Counseling", labels = scales::percent_format(accuracy = 5L)) 
 ```
+
+
+
 References:
 
  - Palette help from https://stackoverflow.com/questions/53286792/how-to-select-certain-colours-from-a-colour-palette-in-r-ggplot
  - Getting rid of legend from https://www.datanovia.com/en/blog/how-to-remove-legend-from-a-ggplot/
- - 
+ - Percent scales from https://stackoverflow.com/tags
+ - Geom_ribbon() from https://typethepipe.com/vizs-and-tips/ggplot-geom_ribbon-shadow-confidence-interval/
+ 
+ 
+## Now we can get a function to make these graphs easily
+```{r}
+new_data %>% 
+  select(Indicator) %>% # , Group) %>% 
+  #filter(Group != "By State") %>% 
+  distinct()
+```
+```{r}
+i <- "Took Prescription Medication for Mental Health, Last 4 Weeks"
+i %>% str_sub(1, -15)
+paste("% of Adults Who", i %>% str_sub(1, -15))
+```
+
+Groups Are:
+
+By Age (18 - 29 years, 30 - 39 years, 40 - 49 years, 50 - 59 years, 60 - 69 years, 70 - 79 years, 80 years and above)
+By Sex (Male, Female)
+By Presence of Symptoms of Anxiety/Depression
+By Race/Hispanic ethnicity
+By Education
+
+```{r}
+new_data_fixed <- new_data_fixed %>% 
+  mutate(avg_cases = total_cases/(as.numeric(date(End_Date)-date(Start_Date))))
+```
+```{r}
+new_data %>% 
+  head(2) %>% 
+  summarize(as.numeric(date(End_Date)-date(Start_Date)))
+```
+
+
+
+```{r}
+make_plot <- function(ind, grp){
+  
+  #Indicator things
+  title <- ind %>% str_sub(1, -15)
+  y_axis_title <- paste("% of Adults Who", title)
+  
+  if (ind == "Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks") {
+    title <- "Took Medication And/Or Received Counseling or Therapy"
+  }
+  
+  if (ind == "Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks") {
+    title <- "Needed But Didn't Get Counseling"
+  }
+  
+  
+  
+  #Group things
+  if (grp == "By Age") {
+    leg_title <- "Age (years)"
+    leg_breaks <- c("18 - 29 years", "30 - 39 years", "40 - 49 years", "50 - 59 years", "60 - 69 years", "70 - 79 years", "80 years and above")
+    leg_labels <- c("18 - 29", "30 - 39", "40 - 49", "50 - 59", "60 - 69", "70 - 79", "80 +")
+    num <- 7
+  }
+  
+  if (grp == "By Sex") {
+    leg_title <- "Sex (binary M/F)"
+    leg_breaks <- c("Male", "Female")
+    leg_labels <- c("Male", "Female")
+    caption <- "Note: These labels may not accurately reflect the gender identities of all survey participants"
+    num <- 2
+  }
+  
+  if (grp == "By Education") {
+    leg_title <- "Education Level"
+    leg_breaks <- c("Bachelor's degree or higher", "Some college/Associate's degree", "High school diploma or GED", "Less than a high school diploma")
+    leg_labels <- c("Bachelor's", "Some College", "High School", "Less than HS")
+    num <- 4
+  }
+  
+  if (grp == "By Presence of Symptoms of Anxiety/Depression") {
+    leg_title <- "Symptoms of Anxiety/Depression"
+    leg_breaks <- c("Did not experience symptoms of anxiety/depression in the past 4 weeks", "Experienced symptoms of anxiety/depression in past 4 weeks")
+    leg_labels <- c("Experienced Symptoms", "No Symptoms")
+    caption <- "Note: These data may not accurately reflect the mental health of all survey participants"
+    num <- 2
+  }
+  
+  if (grp == "By Race/Hispanic ethnicity") {
+    leg_title <- "Race/Hispanic ethnicity"
+    leg_breaks <- c("Hispanic or Latino", "Non-Hispanic white, single race", "Non-Hispanic black, single race", "Non-Hispanic Asian, single race", "Non-Hispanic, other races and multiple races")
+    leg_labels <- c("Hispanic or Latino", "Non-Hispanic white", "Non-Hispanic black", "Non-Hispanic Asian", "Non-Hispanic, other")
+    caption <- "Note: These labels may not accurately reflect the racial/ethnic background of all survey participants"
+    num <- 5
+  }
+  
+  my_colors <- brewer.pal(num, "Set1")
+  
+  #Making the darn plot
+  plot <- new_data_fixed %>% 
+    filter(Group == grp,
+           Indicator == ind) %>% 
+    na.omit() %>% #need to omit in order for the geom_ribbon to work
+    ggplot(aes(x = avg_cases, y = (Value/100))) +
+    geom_ribbon(aes(ymin = (LowCI/100), ymax = (HighCI/100), fill = Subgroup), alpha = .1, show.legend = FALSE) +
+    geom_point(aes(color = Subgroup)) +
+    labs(title = title, subtitle = "Given the number of COVID cases during the time period", caption = caption) +
+    theme(legend.position = "right") +
+    scale_color_manual(values = my_colors, name = leg_title, breaks = leg_breaks, labels = leg_labels) +
+    scale_fill_manual(values = my_colors, breaks = leg_breaks, labels = leg_labels) +
+    theme_classic() +
+    scale_x_continuous("Average Daily COVID-19 Cases in the US", labels = scales::comma_format()) +
+    scale_y_continuous(y_axis_title, labels = scales::percent_format(accuracy = 5L)) 
+  
+  plot
+}
+```
+
+
+
+
+# NYT Data glaring problem i ONLY just noticed dammit
+
+```{r}
+covid_dated_fixed %>% 
+  filter(date >= 2021-01-01) %>% 
+  ggplot(aes(x = date, y = cases))+
+  geom_point()
+```
+
+
+```{r}
+covid_dated_fixed <- covid_dated %>% 
+  #na.omit() %>% 
+  group_by(period) %>% 
+  mutate(prev_total = lag(cases),
+         daily_total = cases - prev_total) %>% 
+  na.omit() %>% 
+  summarize(total_cases = sum(daily_total))
+```
+
+```{r}
+tidied_new <- tidied_data %>% mutate(period = `Time Period`) %>% 
+  select(-Phase, -`Time Period Start Date`, -`Time Period End Date`, -`Time Period`, -`Quartile Range`, -`Suppression Flag`)
+
+new_data_fixed <- tidied_new %>% 
+  left_join(covid_dated_fixed, by = "period")
+```
+
+http://www.sthda.com/english/wiki/wiki.php?id_contents=7930
+
+```{r, eval=FALSE}
+write_csv(new_data_fixed, "new_data_fixed.csv")
+```
 
 # Linear regression
 
