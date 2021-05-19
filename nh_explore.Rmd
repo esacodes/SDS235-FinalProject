@@ -169,9 +169,7 @@ fig2
 ```{r}
 data_states_13_both <- data %>% 
   filter(Indicator == "Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks",
-         Group == "By State" 
-         #,`Time Period` == 13
-         ) %>% 
+         Group == "By State") %>% 
   mutate(State1 = tolower(State)) %>%
   select(Value, State = State1, Indicator, t = `Time Period`, `Time Period Label`) 
 
@@ -187,7 +185,7 @@ map_both <- ggplot() +
     low = "lightblue", high = "darkred",
     name = c("Percentage")) + 
   geom_text(aes(label = State,x = long, y = lat), data = region.lab.data, size=1, alpha = 0.001) +
-  labs(title="Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks", fill = "%")+
+  labs(title="Took Prescription Medication for Mental Health And/Or <br> Received Counseling or Therapy, Last 4 Weeks", fill = "%")+
   theme(axis.line=element_blank(),
       axis.text.x=element_blank(),
       axis.text.y=element_blank(),
@@ -218,9 +216,7 @@ fig3
 ```{r}
 data_states_13_need <- data %>% 
   filter(Indicator == "Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks",
-         Group == "By State" 
-         #,`Time Period` == 13
-         ) %>% 
+         Group == "By State" ) %>% 
   mutate(State1 = tolower(State)) %>%
   select(Value, State = State1, Indicator, t = `Time Period`, `Time Period Label`) 
 
@@ -238,11 +234,11 @@ map_need <- ggplot() +
   geom_text(aes(label = State,x = long, y = lat), data = region.lab.data, size=1, alpha = 0.001) +
   labs(title="Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks", fill = "%")+
   theme(axis.line=element_blank(),
-      axis.text.x=element_blank(),
-      axis.text.y=element_blank(),
-      axis.ticks=element_blank(),
-      axis.title.x=element_blank(),
-      axis.title.y=element_blank())
+        axis.text.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks=element_blank(),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank())
 
 fig4 <- ggplotly(map_need) 
 fig4 <- fig4 %>% 
