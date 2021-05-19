@@ -27,6 +27,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(tidyverse)
 library(lubridate)
+library(RColorBrewer)
 ```
 
 ```{r}
@@ -554,24 +555,24 @@ tidied_data %>%
   distinct()
 ```
 
-|Time Periods     |Time Period Label| Month |
-|----------------:|:----------------|:------|
-|Aug 19 - Aug 31 2020	|	13 | 8
-|Sep 2 - Sep 14 2020  | 14 | 9
-|Sep 16 - Sep 28 2020	|	15| 9
-|Sep 30 - Oct 12 2020	|	16| 9 - 10
-|Oct 14 - Oct 26 2020	|	17| 10
-|Oct 28 - Nov 9 2020	| 18| 10 - 11
-|Nov 11 - Nov 23 2020	|	19| 11
-|Nov 25 - Dec 7 2020	| 20| 11 - 12
-|Dec 9 - Dec 21 2020	| 21| 12
-|Dec 22 - Jan 5 2021  | 1 | 12 - 1
-|Jan 6 - Jan 18 2021	| 22| 1
-|Jan 20 - Feb 1 2021	| 23| 1 - 2
-|Feb 3 - Feb 15 2021	| 24| 2 
-|Feb 17 - Mar 1 2021	| 25| 2 - 3 
-|Mar 3 - Mar 15 2021	| 26| 3
-|Mar 17 - Mar 29 2021 | 27| 3
+|Time Periods     |Time Period Label|
+|----------------:|:----------------|
+|Aug 19 - Aug 31 2020	|	13 | 
+|Sep 2 - Sep 14 2020  | 14 |
+|Sep 16 - Sep 28 2020	|	15| 
+|Sep 30 - Oct 12 2020	|	16| 
+|Oct 14 - Oct 26 2020	|	17|
+|Oct 28 - Nov 9 2020	| 18| 
+|Nov 11 - Nov 23 2020	|	19| 
+|Nov 25 - Dec 7 2020	| 20| 
+|Dec 9 - Dec 21 2020	| 21| 
+|Dec 22 - Jan 5 2021  | 1 | 
+|Jan 6 - Jan 18 2021	| 22| 
+|Jan 20 - Feb 1 2021	| 23| 
+|Feb 3 - Feb 15 2021	| 24| 
+|Feb 17 - Mar 1 2021	| 25| 
+|Mar 3 - Mar 15 2021	| 26| 
+|Mar 17 - Mar 29 2021 | 27| 
 
 First have to break the dates down into these intervals.
 
@@ -582,11 +583,17 @@ Sep 30 - Oct 12 2020	|	16| 9 - 10
 FIGURE OUT YEAR -- IT MIGHT HAVE DUPLICATES BC OF MONTH
 
 
-```{r sort_dates_func, eval = FALSE}
+```{r sort_dates_func}
 sort_dates <- function(date){
+  #I can call sort_dates() in the mutate() for the data
+  #It takes a date as an argument
+  
+  #Getting the values from the date
   year = year(date)
   month = month(date)
   day = day(date)
+  
+  #The output value will be time_period
   
   if (year == 2020) {
     #now follows EVERYTHING for 2020
@@ -645,7 +652,7 @@ sort_dates <- function(date){
     if (month == 1) {
     #january 1-5 is 1, 6-18 is 22, 20-31 is 23, else NA
       if ((day >= 1) & (day <= 5)) {time_period = 1} else {
-        if ((day >= 6) & (day <= 22)) {time_period = 22} else {
+        if ((day >= 6) & (day <= 18)) {time_period = 22} else {
           if ((day >= 20) & (day <= 31)) {time_period = 23} else {time_period = NA}
         }
       }
@@ -672,6 +679,7 @@ sort_dates <- function(date){
     } #end not-january
   } #end 2021 
 
+  #return time_period
   time_period
   
 } #end the function definition
@@ -681,7 +689,7 @@ sort_dates <- function(date){
 ```{r}
 #if i just do the mutate, then sort_dates() doesn't work because it takes only one argument and returns one. BUT if I group by date (which works in this case because there's only one row per each unique date) then the function works!!
 
-covid_dated <- us_covid %>%  % %
+covid_dated <- us_covid %>% 
   group_by(date) %>% 
   mutate(period = sort_dates(date))
 ```
@@ -694,9 +702,27 @@ References:
 ### Joining NYT covid and tidied_data
 
 ```{r}
-covid_new <- covid_dated %>% na.omit()
+covid_dated %>% 
+  na.omit() %>% 
+  group_by(period) %>% 
+  summarize(total_cases = sum(cases),
+            total_rate = sum(cases_rate),
+            mean_rate_new = (total_cases/328239523)*100000)
+```
+This is good because it indicates that summing the rate is just the same as calculating it again with the total cases for a period!
+
+```{r}
+covid_new <- covid_dated %>% 
+  na.omit() %>% 
+  group_by(period) %>% 
+  summarize(total_cases = sum(cases),
+            total_rate = sum(cases_rate))
+```
+
+```{r}
 tidied_new <- tidied_data %>% mutate(period = `Time Period`) %>% 
   select(-Phase, -`Time Period Start Date`, -`Time Period End Date`, -`Time Period`, -`Quartile Range`, -`Suppression Flag`)
+
 new_data <- tidied_new %>% 
   left_join(covid_new, by = "period")
 ```
@@ -710,7 +736,7 @@ new_data <- tidied_new %>%
 tidied_data %>% 
   select(-`Quartile Range`, -`Suppression Flag`, -Phase) %>% 
   na.omit() %>% 
-  #group_by(Group) %>% 
+  group_by(Group) %>% 
   summarise(min = min(HighCI-LowCI),
             max = max(HighCI-LowCI))
 ```
@@ -720,3 +746,198 @@ Okay, there really seems to be some variation in confidence intervals!! That ind
 
 
 # Working with new_data
+
+
+## Basic plots 
+
+My question is: when there are more covid cases/a higher rate of cases, do mental health indicators change?
+
+```{r}
+library(gridExtra)
+```
+
+
+```{r}
+new_data %>% 
+  select(Indicator) %>% 
+  distinct()
+```
+
+```{r}
+p1 <- new_data %>% 
+  filter(Group == "National Estimate",
+         Indicator == "Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks") %>% 
+  ggplot(aes(x = total_cases, y = Value)) +
+  geom_point() +
+  labs(title = "Cases vs. Counseling/Therapy")
+```
+
+```{r}
+p2 <- new_data %>% 
+  filter(Group == "National Estimate",
+         Indicator == "Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks") %>% 
+  ggplot(aes(x = Start_Date, y = Value)) +
+  geom_point() +
+  labs(title = "Date vs. Counseling/Therapy")
+```
+
+```{r}
+p3 <- new_data %>% 
+  filter(Group == "National Estimate",
+         Indicator == "Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks") %>% 
+  ggplot(aes(x = Start_Date, y = total_cases)) +
+  geom_point() +
+  labs(title = "Date vs. Cases")
+```
+
+
+```{r}
+grid.arrange(p1, p2, p3)
+```
+
+
+```{r}
+p1 <- new_data %>% 
+  filter(Group == "National Estimate",
+         Indicator == "Received Counseling or Therapy, Last 4 Weeks") %>% 
+  ggplot(aes(x = total_cases, y = Value)) +
+  geom_point() +
+  labs(title = "Cases vs. Counseling/Therapy")
+```
+
+```{r}
+p2 <- new_data %>% 
+  filter(Group == "National Estimate",
+         Indicator == "Received Counseling or Therapy, Last 4 Weeks") %>% 
+  ggplot(aes(x = Start_Date, y = Value)) +
+  geom_point() +
+  labs(title = "Date vs. Counseling/Therapy")
+```
+
+```{r}
+p3 <- new_data %>% 
+  filter(Group == "National Estimate",
+         Indicator == "Received Counseling or Therapy, Last 4 Weeks") %>% 
+  ggplot(aes(x = Start_Date, y = total_cases)) +
+  geom_point() +
+  labs(title = "Date vs. Cases")
+```
+
+
+```{r}
+grid.arrange(p1, p2, p3)
+```
+
+
+```{r}
+new_data %>% 
+  filter(Group == "By Age",
+         Indicator == "Received Counseling or Therapy, Last 4 Weeks") %>% 
+  ggplot(aes(x = total_cases, y = Value, color = Subgroup)) +
+  geom_point() +
+  labs(title = "Cases vs. Counseling/Therapy") +
+  theme(legend.position = "top")
+```
+
+```{r}
+new_data %>% 
+  filter(Group == "By Sex",
+         Indicator == "Received Counseling or Therapy, Last 4 Weeks") %>% 
+  ggplot(aes(x = total_cases, y = Value, color = Subgroup)) +
+  geom_point() +
+  labs(title = "Cases vs. Counseling/Therapy") +
+  theme(legend.position = "top")
+```
+
+```{r}
+new_data %>% 
+  filter(Group == "By Presence of Symptoms of Anxiety/Depression",
+         Indicator == "Received Counseling or Therapy, Last 4 Weeks") %>% 
+  ggplot(aes(x = total_cases, y = Value, color = Subgroup)) +
+  geom_point() +
+  labs(title = "Cases vs. Counseling/Therapy") +
+  theme(legend.position = "top")
+```
+
+```{r}
+new_data %>% 
+  filter(Group == "By Race/Hispanic ethnicity",
+         Indicator == "Received Counseling or Therapy, Last 4 Weeks") %>% 
+  ggplot(aes(x = total_cases, y = Value, color = Subgroup)) +
+  geom_point() +
+  labs(title = "Cases vs. Counseling/Therapy") +
+  theme(legend.position = "top")
+```
+
+```{r}
+new_data %>% 
+  filter(Group == "By Education",
+         Indicator == "Received Counseling or Therapy, Last 4 Weeks") %>% 
+  ggplot(aes(x = total_cases, y = Value, color = Subgroup)) +
+  geom_point() +
+  labs(title = "Cases vs. Counseling/Therapy") +
+  theme(legend.position = "top")
+```
+
+## Let's get plots for one indicator exactly the way we want them
+
+```{r}
+my_colors <- RColorBrewer::brewer.pal(6, "BuGn")[6:3]
+
+new_data %>% 
+  filter(Group == "By Education",
+         Indicator == "Received Counseling or Therapy, Last 4 Weeks") %>% 
+  ggplot(aes(x = total_cases, y = Value)) +
+  #geom_ribbon(aes(x = total_cases, ymax = HighCI, ymin = LowCI, fill = Subgroup), alpha = .1, show.legend = FALSE) +
+  geom_point(aes(color = Subgroup)) +
+  labs(title = "Access to Counseling or Therapy Over the Pandemic", subtitle = "Given number of COVID patients") +
+  theme(legend.position = "right") +
+  scale_color_manual(values = my_colors, name = "Education Level", breaks = c("Bachelor's degree or higher", "Some college/Associate's degree", "High school diploma or GED", "Less than a high school diploma"), labels = c("Bachelor's", "Some College", "High School", "Less than HS")) +
+  #scale_fill_manual(values = my_colors) +
+  theme_classic() +
+  scale_x_continuous("COVID-19 Cases in the US During the Time Period") +
+  scale_y_continuous("% of US Adults Who Received Counseling") 
+```
+References:
+
+ - Palette help from https://stackoverflow.com/questions/53286792/how-to-select-certain-colours-from-a-colour-palette-in-r-ggplot
+ - Getting rid of legend from https://www.datanovia.com/en/blog/how-to-remove-legend-from-a-ggplot/
+ - 
+
+# Linear regression
+
+Help from https://www.scribbr.com/statistics/linear-regression-in-r/
+
+## 1: Load Data into R
+
+```{r}
+lin_reg_meds <- new_data %>% 
+  filter(Group == "National Estimate",
+         Indicator == "Took Prescription Medication for Mental Health, Last 4 Weeks") %>% 
+  select(total_cases, Value) %>% 
+  na.omit()
+
+lin_reg_meds
+summary(lin_reg_meds)
+```
+
+## 2: Do the Data Meet the Assumptions?
+
+**Simple Regression Assumptions:**
+
+ - Independence of observations
+ - Normality
+
+
+*Independence of observations*
+
+"Because we only have one independent variable and one dependent variable, we don’t need to test for any hidden relationships among variables" (scribbr.com).
+
+*Normality*
+
+```{r}
+hist(lin_reg_meds$Value)
+```
+
+hmm would this even work??
+
