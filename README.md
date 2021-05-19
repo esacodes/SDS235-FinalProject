@@ -3,7 +3,7 @@
 Carol Milton, Nage Ngo, and Esa Schenck
 
 
-### Data
+## Data
 
 Our dataset was downloaded from the U.S. Government’s Open Data source, Data.gov. The specific dataset, **Mental_Health_Care_in_the_Last_4_Weeks.csv**, is metadata published by the Centers for Disease Control and Prevention (CDC) from the Household Pulse Survey. It contains aggregate statistics for four mental health indicators in U.S. adults between mid-August 2020 and late March 2021.
 
@@ -22,7 +22,7 @@ Our dataset was downloaded from the U.S. Government’s Open Data source, Data.g
 **new_data_fixed.csv**: The cleaned dataset; **covid_dated_fixed.csv** and **data_correct_dates.csv** joined; also the dataset used in
 **final_scatterplots.Rmd** to generate visualization for the relationship between the COVID severity and mental health access.
 
-### Exploration and Visualization
+## Exploration and Visualization
 
 **esas_exploratory.Rmd**: Data wrangling and exploration.
 
@@ -32,6 +32,6 @@ Our dataset was downloaded from the U.S. Government’s Open Data source, Data.g
 
 The html files are the knitted output of the markdowns.
 
-### Packages Used for Wrangling and Visualization
+## Packages Used for Wrangling and Visualization
 
 tidyverse, RColorBrewer, gridExtra, ggplot2, lubridate, usmap, map, multiscales (clauswilke/multiscales: Multivariate scales for 'ggplot2')
