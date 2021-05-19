@@ -31,10 +31,7 @@ data <- read_csv("Mental_Health_copy.csv",
                                   # HighCI= col_skip(),
                                   `Confidence Interval`= col_skip()
                                   )) %>%
-  mutate(t = ifelse(`Time Period`>21, `Time Period`+1,`Time Period`)) %>%
-  mutate(t2 = ifelse(t==1, 22,t),
-         CIint = HighCI-LowCI) %>%
-  select(-c(t,`Time Period`)) %>% rename(`Time Period`=t2)
+  mutate(CIint = HighCI-LowCI) 
 ```
 
 # Temporal by state and indicator
