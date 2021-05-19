@@ -28,7 +28,6 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning=FALSE)
 #Loading packages
 library(tidyverse)
 library(RColorBrewer)
-library(gridExtra)
 library(ggplot2)
 ```
 
@@ -37,25 +36,12 @@ library(ggplot2)
 new_data_fixed <- read_csv("new_data_fixed.csv")
 ```
 
-
 ```{r}
 #Function to make each plot
-make_plot <- function(ind, grp){
+make_plot <- function(grp){
   
   caption <- ""
-  
-  #Indicator things
-  title <- ind %>% str_sub(1, -15)
-  
-  if (ind == "Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks") {
-    title <- "Took Medication And/Or Received Counseling or Therapy"
-  }
-  if (ind == "Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks") {
-    title <- "Needed But Didn't Get Counseling"
-  }
-  
-  y_axis_title <- paste("% of Adults Who", title)
-  
+
   #Group things
   if (grp == "By Age") {
     leg_title <- "Age (years)"
@@ -99,25 +85,27 @@ make_plot <- function(ind, grp){
   
   #Making the darn plot
   plot <- new_data_fixed %>% 
-    filter(Group == grp,
-           Indicator == ind) %>% 
+    filter(Group == grp) %>% 
+    mutate(Indicator = recode(Indicator,
+                              "Took Prescription Medication for Mental Health, Last 4 Weeks" = "Took Medication for Mental Health",
+                              "Received Counseling or Therapy, Last 4 Weeks" = "Received Counseling or Therapy",
+                              "Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks" = "Took Meds and/or Received Counseling", "Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks" = "Needed But Didn't Get Counseling")) %>% 
     na.omit() %>% #need to omit in order for the geom_ribbon to work
     ggplot(aes(x = avg_cases, y = (Value/100))) +
     geom_ribbon(aes(ymin = (LowCI/100), ymax = (HighCI/100), fill = Subgroup), alpha = .1, show.legend = FALSE) +
     geom_point(aes(color = Subgroup)) +
-    labs(title = title, subtitle = "Given the number of COVID cases during the time period", caption = caption) +
+    labs(title = paste("Mental Health During COVID", grp), subtitle = "Given the number of COVID cases during the time period", caption = caption) +
     theme(legend.position = "right") +
     scale_color_manual(values = my_colors, name = leg_title, breaks = leg_breaks, labels = leg_labels) +
     scale_fill_manual(values = my_colors, breaks = leg_breaks, labels = leg_labels) +
     theme_classic() +
     scale_x_continuous("Average Daily COVID-19 Cases in the US", labels = scales::comma_format()) +
-    scale_y_continuous(y_axis_title, labels = scales::percent_format(accuracy = 5L)) 
+    scale_y_continuous("Percent of Adults Who...", labels = scales::percent_format(accuracy = 5L)) +
+    facet_wrap(~Indicator, labeller = label_wrap_gen(width = 50, multi_line = TRUE))
   
   plot
 }
 ```
-
-
 
 
 # Variables
@@ -144,59 +132,42 @@ make_plot <- function(ind, grp){
 # By Age
 
 ```{r}
-age1 <- make_plot("Took Prescription Medication for Mental Health, Last 4 Weeks", "By Age")
-age2 <- make_plot("Received Counseling or Therapy, Last 4 Weeks", "By Age")
-age3 <- make_plot("Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks", "By Age")
-age4 <- make_plot("Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks", "By Age")
+age <- make_plot("By Age")
 
-grid.arrange(age1, age2, age3, age4, ncol=2, nrow =2)
+age
 ```
 
 # By Sex
 
 ```{r}
-sex1 <- make_plot("Took Prescription Medication for Mental Health, Last 4 Weeks", "By Sex")
-sex2 <- make_plot("Received Counseling or Therapy, Last 4 Weeks", "By Sex")
-sex3 <- make_plot("Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks", "By Sex")
-sex4 <- make_plot("Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks", "By Sex")
-```
-```{r}
-grid.arrange(sex1, sex2, sex3, sex4, ncol=2, nrow =2)
+sex <- make_plot("By Sex")
+
+sex
 ```
 
 # By Presence of Symptoms of Anxiety/Depression
  
 ```{r}
-symptoms1 <- make_plot("Took Prescription Medication for Mental Health, Last 4 Weeks", "By Presence of Symptoms of Anxiety/Depression")
-symptoms2 <- make_plot("Received Counseling or Therapy, Last 4 Weeks", "By Presence of Symptoms of Anxiety/Depression")
-symptoms3 <- make_plot("Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks", "By Presence of Symptoms of Anxiety/Depression")
-symptoms4 <- make_plot("Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks", "By Presence of Symptoms of Anxiety/Depression")
-```
-```{r}
-grid.arrange(symptoms1, symptoms2, symptoms3, symptoms4, ncol=2, nrow =2)
+symptoms <- make_plot("By Presence of Symptoms of Anxiety/Depression")
+
+symptoms
 ```
 
 # By Race/Hispanic ethnicity
 
 ```{r}
-race1 <- make_plot("Took Prescription Medication for Mental Health, Last 4 Weeks", "By Race/Hispanic ethnicity")
-race2 <- make_plot("Received Counseling or Therapy, Last 4 Weeks", "By Race/Hispanic ethnicity")
-race3 <- make_plot("Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks", "By Race/Hispanic ethnicity")
-race4 <- make_plot("Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks", "By Race/Hispanic ethnicity")
-```
-```{r}
-grid.arrange(race1, race2, race3, race4, ncol=2, nrow =2)
+race <- make_plot("By Race/Hispanic ethnicity")
+
+race
 ```
 
 # By Education
 
 ```{r}
-education1 <- make_plot("Took Prescription Medication for Mental Health, Last 4 Weeks", "By Education")
-education2 <- make_plot("Received Counseling or Therapy, Last 4 Weeks", "By Education")
-education3 <- make_plot("Took Prescription Medication for Mental Health And/Or Received Counseling or Therapy, Last 4 Weeks", "By Education")
-education4 <- make_plot("Needed Counseling or Therapy But Did Not Get It, Last 4 Weeks", "By Education")
+education <- make_plot("By Education")
+
+education
 ```
-```{r}
-grid.arrange(education1, education2, education3, education4, ncol=2, nrow =2)
-```
+
+
 
